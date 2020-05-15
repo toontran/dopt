@@ -1,0 +1,9 @@
+# Exclude all
+*
+
+# Except src & tests
+!src/
+!test/
+
+# Except .gitignore itself
+!.gitignore
