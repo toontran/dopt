@@ -10,7 +10,8 @@ async def send_message(loop):
             request = input(">> ")
             if request:
                 writer.write(request.encode("utf8"))
-                response = (await reader.read(255)).decode("utf8")
+                await writer.drain()
+                response = (await reader.read(10)).decode("utf8")
                 print(response, end="")
     except KeyboardInterrupt:
         writer.close()
