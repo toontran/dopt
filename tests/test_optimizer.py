@@ -1,20 +1,22 @@
 from unittest import TestCase
 from random import randint
-from typing import Dict
+from typing import Dict, Any
+import time
 
 from src import Optimizer
 
 
-class ConstantOptimizer(Optimizer):
-    r"""A test optimizer. Generate only a dummy candidate
+class DummyOptimizer(Optimizer):
+    r"""A test optimizers. Generate only a dummy candidate
     to test asyncronization and networking"""
 
-    def generate_candidate(self, trainer_info: Dict):
-        return randint(1, 4)
+    def generate_candidate(self, trainer_info: Dict) -> Dict[str, Any]:
+        time.sleep(2)
+        return {"batch_size": 4}
 
 
 class TestOptimizer(TestCase):
     def test_run(self):
-        optimizer = ConstantOptimizer(max_observations=3)
+        optimizer = DummyOptimizer()
         print(optimizer.generate_candidate({}))
         optimizer.run()
