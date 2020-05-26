@@ -34,7 +34,7 @@ class Optimizer(ABC):
             
     @property
     def is_running(self) -> bool:
-        if len(self.observations) > MAX_OBSERVATIONS:
+        if len(self.observations) > Optimizer.MAX_OBSERVATIONS:
             return False
         return True
     
