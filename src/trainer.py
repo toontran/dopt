@@ -19,7 +19,6 @@ class Trainer(ABC):
         :param host:
         :param port:
         """
-        self.objective_function = objective_function
         self.hardware_info: Dict = self._get_hardware_info()
         self.host = host
         self.port = port
