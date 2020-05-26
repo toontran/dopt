@@ -1,5 +1,6 @@
 from typing import Dict, Any
 
+import torch
 from botorch.test_functions.synthetic import Hartmann
 
 from src.trainer import Trainer
