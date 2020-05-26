@@ -113,6 +113,11 @@ class NEIOptimizer(Optimizer):
             for i, key in enumerate(bounds.keys()):
                 candidate[key] = torch_candidate.cpu().numpy()[0][i]
                 
+            print(f"Got: {trainer_info}, sending candidate: {candidate}"
+                  f"All observations are:"
+                  f"{self.observations}"
+                  f"Pending: {self.pending_candidates}")
+                
             return candidate
                 
             
