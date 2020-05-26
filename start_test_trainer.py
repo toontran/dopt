@@ -17,6 +17,7 @@ class NegHartmannTrainer(Trainer):
         :param candidate:
         :return:
         """
+        print(f"Trainer received: {candidate}")
         objective_function = Hartmann(negate=True)
         train_x = torch.tensor([candidate["x1"], candidate["x2"], candidate["x3"],
                                 candidate["x4"], candidate["x5"], candidate["x6"]])
