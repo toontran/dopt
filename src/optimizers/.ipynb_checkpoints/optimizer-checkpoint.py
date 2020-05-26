@@ -32,7 +32,6 @@ class Optimizer(ABC):
         # [{"num_batch":..., "num_iter":...}, ...]
         self.pending_candidates: List[Dict[str, Dict]] = []
             
-    @property
     def is_running(self) -> bool:
         if len(self.observations) > Optimizer.MAX_OBSERVATIONS:
             return False
