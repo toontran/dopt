@@ -1,8 +1,10 @@
-from unittest import TestCase
+import sys
+import time
+from unittest import TestCase, main
 from random import randint
 from typing import Dict, Any
-import time
 
+sys.path.insert(0, "..")
 from src import Optimizer
 
 
@@ -20,3 +22,6 @@ class TestOptimizer(TestCase):
         optimizer = DummyOptimizer()
         print(optimizer.generate_candidate({}))
         optimizer.run()
+        
+if __name__ == "__main__":
+    main()

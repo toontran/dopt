@@ -1,8 +1,10 @@
+import sys
+import time
 from abc import ABC
 from typing import Dict, Any
-from unittest import TestCase
-import time
+from unittest import TestCase, main
 
+sys.path.insert(0, "..")
 from src import Trainer
 
 
@@ -20,3 +22,6 @@ class TestTrainer(TestCase):
         print(trainer.get_observation({"batch_size": 0}))
         trainer.run()
 
+        
+if __name__ == "__main__":
+    main()
