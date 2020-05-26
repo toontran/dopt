@@ -24,7 +24,7 @@ class Trainer(ABC):
         self.port = port
         self.is_running = True
         
-    def _get_trainer_info(self) -> Dict:
+    def _get_hardware_info(self) -> Dict:
         return {}
 
     def run(self):
