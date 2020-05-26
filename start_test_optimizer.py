@@ -3,7 +3,6 @@ from typing import Dict, Any
 from botorch.test_functions.synthetic import Hartmann
 
 from src.trainer import Trainer
-from src.optimizers import NEIOptimizer
 
 
 class NegHartmannTrainer(Trainer):
@@ -27,13 +26,5 @@ class NegHartmannTrainer(Trainer):
         return {"result": (noisy_objective.cpu().numpy()[0], 
                             observed_noise.cpu().numpy()[0])}
     
-bounds = {
-    'x1': (0,1),
-    'x2': (0,1),
-    'x3': (0,1),
-    'x4': (0,1),
-    'x5': (0,1),
-    'x6': (0,1)
-}
-optimizer = NEIOptimizer(bounds, device="cpu")
-optimizer.run()
+    
+
