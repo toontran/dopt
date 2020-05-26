@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 import json
 
+import torch
 
 class Trainer(ABC):
     r"""Representation of the objective function running on the target machine.
