@@ -73,12 +73,14 @@ class NEIOptimizer(Optimizer):
         return mll, model
         
     # TODO: Change model initialization upon NanError thrown by cholesky decomposition
-    def generate_candidate(self, candidate: Dict[str, Any], trainer_info: Union[Dict, None]) \
+    def generate_candidate(self, 
+                           candidate: Union[Dict[str, Any], None],
+                           trainer_info: Union[Dict, None]) \
             -> Dict[str, Any]:
-        if trainer_info is None and len(self.observations) == 0:
+        if candidate is None or trainer_info is None and len(self.observations) == 0:
             # Generate a random candidate to startup the optimizing process
             return self._generate_random_candidate()
-        elif trainer_info is None and len(self.observations) > 0:
+        elif candidate is None or trainer_info is None and len(self.observations) > 0:
             # TODO: Need to handle this case
             pass
         else:

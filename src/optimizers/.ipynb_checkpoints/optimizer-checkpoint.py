@@ -73,10 +73,11 @@ class Optimizer(ABC):
         self.pending_candidates.append(None) 
         
         trainer_info = None
+        candidate = None
         while self.is_running():
             
             # Find one potential candidate to try next based on the info
-            candidate: Dict[srt, Any] = self.generate_candidate(candidate, trainer_info)
+            candidate: Dict[str, Any] = self.generate_candidate(candidate, trainer_info)
             
             # Send candidate to Trainer
             out_message = json.dumps(candidate)
