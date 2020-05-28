@@ -5,6 +5,12 @@ import json
 
 import torch
 import numpy as np
+from gpytorch.mlls import ExactMarginalLogLikelihood
+from botorch.models import HeteroskedasticSingleTaskGP
+from botorch import fit_gpytorch_model
+from botorch.acquisition.monte_carlo import qNoisyExpectedImprovement
+from botorch.sampling.samplers import SobolQMCNormalSampler
+from botorch.optim import optimize_acqf
 
 from src.optimizers.optimizer import Optimizer
 
@@ -84,20 +90,22 @@ class NEIOptimizer(Optimizer):
             # TODO: Need to handle this case
             pass
         else:
-            mll, model = initialize_model(candidate)
+            print(f"Optimizer received \nCandidate: {candidate} \nTrainer info: {trainer_info}")
+            mll, model = self.initialize_model(candidate, trainer_info["result"])
             fit_gpytorch_model(mll)
             qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=0)
             qNEI = qNoisyExpectedImprovement(
                 model=model, 
-                X_baseline=torch.tensor([list(o["candidate"].values()) for o in observations],
-                                        device=device, dtype=NEIOptimizer.DTYPE),
+                X_baseline=torch.tensor([list(o["candidate"].values()) for o in self.observations],
+                                        device=self.device, dtype=NEIOptimizer.DTYPE),
                 sampler=qmc_sampler, 
             )
 
             # Torch based bounds
-            lower_bounds = [bound[0] for bound in self.get_labels()]
-            upper_bounds = [bound[1] for bound in self.get_labels()]
-            bounds_torch = torch.tensor([lower_bounds, upper_bounds], device=device, dtype=NEIOptimizer.DTYPE)
+            lower_bounds = [bound[0] for bound in self.bounds.values()]
+            upper_bounds = [bound[1] for bound in self.bounds.values()]
+            print(f"Bounds: {lower_bounds}, {upper_bounds}")
+            bounds_torch = torch.tensor([lower_bounds, upper_bounds], device=self.device, dtype=NEIOptimizer.DTYPE)
             torch_candidate, _ = optimize_acqf(
                 acq_function=qNEI,
                 bounds=bounds_torch,
@@ -112,7 +120,7 @@ class NEIOptimizer(Optimizer):
             )  
             
             candidate = {}
-            for i, key in enumerate(bounds.keys()):
+            for i, key in enumerate(self.get_labels()):
                 candidate[key] = torch_candidate.cpu().numpy()[0][i]
                 
             print(f"Got: {trainer_info}, sending candidate: {candidate}"
