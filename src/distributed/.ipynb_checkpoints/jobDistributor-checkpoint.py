@@ -33,7 +33,7 @@ about the submissions made--again, see submitMaster.
 import os, sys, shlex, subprocess, time
 
 sys.path.append(".")
-from listQueue import listQueue
+from .listQueue import listQueue
 from src.utils.config import CONFIG
 
 

@@ -47,3 +47,4 @@ if __name__ == "__main__":
     #for comm in commands:
     #    print(comm)
     processCommandsInParallel(commands)
+    print("OK")

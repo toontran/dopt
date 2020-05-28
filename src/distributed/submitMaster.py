@@ -36,9 +36,9 @@ See testSubmitMaster.py.
 import time
 import sys
 #from multiprocessing import Connection
-from listQueue import listQueue
+from .listQueue import listQueue
 from multiprocessing import Process, Pipe
-from jobDistributor import *
+from .jobDistributor import *
 
 def submitMaster(conn):
     print("submit Master started...")
