@@ -9,5 +9,5 @@ if __name__ == "__main__":
         'x5': (0,1),
         'x6': (0,1),
     }
-    optimizer = NEIOptimizer(bounds, device="cpu")
+    optimizer = NEIOptimizer("hartmann.json", bounds, device="cpu")
     optimizer.run(host=None)

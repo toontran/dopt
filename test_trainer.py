@@ -67,7 +67,7 @@ class ToyFunctionTrainer(Trainer):
   
 
 if __name__ == "__main__":
-    trainer = NegHartmannTrainer(host="tung-torch",
+    trainer = NegHartmannTrainer(host="jvs008-r1.bucknell.edu",
                                  port="15555")
     trainer.run()
     

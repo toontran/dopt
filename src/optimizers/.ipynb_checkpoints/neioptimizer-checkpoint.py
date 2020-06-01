@@ -28,6 +28,7 @@ class NEIOptimizer(Optimizer):
     DTYPE = torch.double
     
     def __init__(self, 
+                 file_name: str,
                  bounds: Dict[str, Tuple[float, float]],
                  device: Optional[str] = "cpu"):
         r"""Constructor for  Bayesian optimizer that use Noisy Expected Improvement
@@ -36,7 +37,7 @@ class NEIOptimizer(Optimizer):
         :param device: Generate candidates on the chosen device.
         :param bounds: Boundaries to the search space.
         """
-        super().__init__(bounds=bounds)
+        super().__init__(file_name, bounds=bounds)
         self.device = device
         
     def _generate_random_candidate(self) -> None:
