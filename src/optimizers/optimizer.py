@@ -2,12 +2,13 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Union, Tuple
 import json
+from os import path
 
 import torch
 
 # TODO: Use logging instead of print
 # TODO: Save observations into a log file
-# TODO: Add checkpoint functionality
+# Multiple objective functions?
 class Optimizer(ABC):
     r"""Abstract base class for hyperparameter optimizers.
     Optimizer distributes candidates (sets of hyperparameters)
@@ -17,17 +18,22 @@ class Optimizer(ABC):
     MAX_OBSERVATIONS = 500
 
     def __init__(self, 
+                 file_name: str,
                  bounds: Dict[str, Tuple[float, float]]) -> None:
         r""" Constructor for Optimizer base class.
         
-        :param bounds: Boundaries to the search space
+        :param file_name: Has to be a .json file. Name of the file
+                          that stores observations
+        :param bounds:    Boundaries to the search space
         """
+        self.file_name = file_name
         self.loop = asyncio.get_event_loop()
         self.num_trainers = 0
         self.bounds = bounds
         # List of observed points:
         # [{"candidate":..., "result":...}, ...}]
         self.observations: List[Dict[str, Dict]] = []
+        self.load_observations()
         # List of pending hyperparameters, length = number of Trainers
         # [{"num_batch":..., "num_iter":...}, ...]
         self.pending_candidates: List[Dict[str, Dict]] = []
@@ -39,6 +45,24 @@ class Optimizer(ABC):
     
     def get_labels(self):
         return self.bounds.keys()
+    
+    def load_observations(self):
+        r"""Load observations from existing file. If file doesn't
+        exist, create a new file"""
+        if path.exists(self.file_name):
+            # Load observations
+            with open(self.file_name, "r") as f:
+                for line in f.readlines():
+                    self.observations.append(json.loads(line))
+        else:
+            # Create a new file
+            with open(self.file_name, "w") as f:
+                pass
+    
+    def save_observation(self, observation):
+        r"""Save the acquired observation into a storing file"""
+        with open(self.file_name, "a") as f:
+            f.write(json.dumps(observation, indent=None) + "\n")
 
     def run(self, host="127.0.0.1", port="15555") -> None:
         """ Runs server at specified host and port.
@@ -55,6 +79,7 @@ class Optimizer(ABC):
         print(f'Serving on {address}')
         async with server:
             await server.serve_forever()
+        print("Done")
 
     async def _handle_trainer(self, reader: asyncio.StreamReader,
                               writer: asyncio.StreamWriter) -> None:
@@ -89,8 +114,16 @@ class Optimizer(ABC):
             in_message: str = (await reader.read(255)).decode("utf8")
             trainer_info: Dict = json.loads(in_message)
                 
-            self.observations.append({"candidate": candidate, "result": trainer_info["result"]})
+            observation = {
+                "candidate": candidate, 
+                "result": trainer_info["result"],
+                "time_started": trainer_info["time_started"],
+                "time_elapsed": trainer_info["time_elapsed"]
+            }
+            
+            self.observations.append(observation)
             self.pending_candidates[trainer_index] = None
+            self.save_observation(observation)
             
         writer.close()
         self.num_trainers -= 1

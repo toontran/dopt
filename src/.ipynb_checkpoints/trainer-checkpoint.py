@@ -2,6 +2,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 import json
+from datetime import datetime
 
 
 class Trainer(ABC):
@@ -19,13 +20,9 @@ class Trainer(ABC):
         :param host:
         :param port:
         """
-        self.hardware_info: Dict = self._get_hardware_info()
         self.host = host
         self.port = port
         self.is_running = True
-        
-    def _get_hardware_info(self) -> Dict:
-        return {}
 
     def run(self):
         asyncio.run(self._listen_to_optimizer())
@@ -44,11 +41,18 @@ class Trainer(ABC):
             in_message: str = (await reader.read(255)).decode("utf8")
             candidate: Dict = json.loads(in_message)
                 
-            # Train the model and get result(s)
+            # Pass candidate to objective function and get result(s)
+            start = datetime.now()
             observation = self.get_observation(candidate)
+            elapsed = datetime.now() - start
             
             # Send result back to optimizers
-            out_message = json.dumps(observation)
+            trainer_info = {}
+            trainer_info["result"] = observation
+            trainer_info["time_started"] = start.strftime("%m/%d/%Y-%H:%M:%S")
+            trainer_info["time_elapsed"] = round(elapsed.seconds/3600, 2) # In hours, rounded to 2nd decimal
+            
+            out_message = json.dumps(trainer_info)
             writer.write(out_message.encode("utf8"))
             await writer.drain()
             

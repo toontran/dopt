@@ -8,21 +8,27 @@ from src.distributed.submitMaster import processCommandsInParallel
 from src.utils.config import CONFIG
 # from test_trainer import NegHartmannTrainer
 
+import warnings
+warnings.filterwarnings("ignore")
+
 
 print(CONFIG)
 
 
 def start_optimizer(bounds):
     r"""Start the optimizer and listen to available trainers"""
-    optimizer = NEIOptimizer(bounds, device="cpu")
-    optimizer.run()
+    print("Starting optimizer..")
+    optimizer = NEIOptimizer("hartmann.json", bounds, device="cpu")
+    optimizer.run(host=None)
 
-def start_trainers(num_trainers=2):
+def start_trainers(num_trainers_active=2):
     r"""Connect to available machines and start trainers in parallel"""
-    assert num_trainers <= len(CONFIG["distribute"]["computer_list"])
-    commands = ["python3 ~/PycharmProjects/summer/test_trainer.py"]
+    assert num_trainers_active <= len(CONFIG["distribute"]["computer_list"]), \
+        "Numbers of trainers active at once cannot be greater than number of computers available!"
+    commands = ["python3 ~/PycharmProjects/summer/test_trainer.py" 
+                for i in range(num_trainers_active)]
+#     commands = ["date" for i in range(num_trainers)]
     print("Starting trainers..")
-    sys.stdout.flush()
     processCommandsInParallel(commands)
     
 def whileTrue(num_sec):
@@ -39,33 +45,28 @@ def main():
         
     # Bounds of the sample space
     bounds = {
-        'x1': (0,1),
-        'x2': (0,1),
-        'x3': (0,1),
-        'x4': (0,1),
-        'x5': (0,1),
-        'x6': (0,1)
+        'x1': (-4,4),
+        'x2': (-3,3)
     }
     
     # Open two processes: One starts the optimizer, the
     # other starts all the trainers  
     # https://pymotw.com/2/multiprocessing/basics.html
-    t = Process(target=start_trainers, args=(3,))
-    t.daemon = False
-    
     o = Process(target=start_optimizer, args=(bounds,))
     o.daemon = True
-#     s = pool.apply_async(whileTrue, [100])
-#     p = pool.apply_async(whileTrue, [1000])
+    
+    t = Process(target=start_trainers, args=(3,))
+    t.daemon = False
 
-#     pool.close()
-#     pool.join()
-# #     s.get(), p.get()
-#     pattern.get(), parsed.get()
-    t.start()
-    time.sleep(1)
     o.start()
-
+    t.start()
+    
+    while True:
+        time.sleep(1)
+        if not o.is_alive():
+            break
+    
+    o.kill(), t.kill()
 
 if __name__ == "__main__":
     main()

@@ -7,7 +7,7 @@ if __name__ == "__main__":
         'x3': (0,1),
         'x4': (0,1),
         'x5': (0,1),
-        'x6': (0,1)
+        'x6': (0,1),
     }
     optimizer = NEIOptimizer(bounds, device="cpu")
-    optimizer.run()
+    optimizer.run(host=None)
