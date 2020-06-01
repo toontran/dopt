@@ -71,7 +71,7 @@ class NEIOptimizer(Optimizer):
         train_var = torch.tensor(train_var, device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-1)
 
         # define models for objective and constraint
-        model = HeteroskedasticSingleTaskGP(train_x, train_obj, train_var**2).to(train_x)
+        model = HeteroskedasticSingleTaskGP(train_x, train_obj, train_var).to(train_x)
         # combine into a multi-output GP model
         mll = ExactMarginalLogLikelihood(model.likelihood, model)
         # load state dict if it is passed

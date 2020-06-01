@@ -47,8 +47,12 @@ def main():
         
     # Bounds of the sample space
     bounds = {
-        'x1': (-4,4),
-        'x2': (-3,3)
+        'x1': (0,1),
+        'x2': (0,1),
+        'x3': (0,1),
+        'x4': (0,1),
+        'x5': (0,1),
+        'x6': (0,1),
     }
     
     # Open two processes: One starts the optimizer, the
