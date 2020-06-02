@@ -12,7 +12,11 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-print(CONFIG)
+# Command to run on target machines
+COMMAND = "module switch python/3.7-2020-05-28" + \
+          " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
+          " && python3 ~/PycharmProjects/summer/run_trainer.py"
+print("Using config: ", CONFIG)
 
 
 def start_optimizer(bounds):
@@ -25,11 +29,7 @@ def start_trainers(num_trainers_active=2):
     r"""Connect to available machines and start trainers in parallel"""
     assert num_trainers_active <= len(CONFIG["distribute"]["computer_list"]), \
         "Numbers of trainers active at once cannot be greater than number of computers available!"
-    commands = ["module switch python/3.7-2020-05-28" + \
-                " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
-                " && python3 ~/PycharmProjects/summer/test_trainer.py"
-                for i in range(num_trainers_active)]
-#     commands = ["date" for i in range(num_trainers)]
+    commands = [COMMAND for i in range(num_trainers_active)]
     print("Starting trainers..")
     processCommandsInParallel(commands)
     

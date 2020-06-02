@@ -2,10 +2,12 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Union, Optional, Tuple
 import json
+import random
 
 import torch
 import numpy as np
 from gpytorch.mlls import ExactMarginalLogLikelihood
+from gpytorch.utils.errors import NanError
 from botorch.models import HeteroskedasticSingleTaskGP
 from botorch import fit_gpytorch_model
 from botorch.acquisition.monte_carlo import qNoisyExpectedImprovement
@@ -30,14 +32,15 @@ class NEIOptimizer(Optimizer):
     def __init__(self, 
                  file_name: str,
                  bounds: Dict[str, Tuple[float, float]],
-                 device: Optional[str] = "cpu"):
+                 device: Optional[str] = "cpu",
+                 seed: Optional[int] = random.randint(1, 100000)):
         r"""Constructor for  Bayesian optimizer that use Noisy Expected Improvement
         as the acquisition function. 
         
         :param device: Generate candidates on the chosen device.
         :param bounds: Boundaries to the search space.
         """
-        super().__init__(file_name, bounds=bounds)
+        super().__init__(file_name, bounds=bounds, seed=seed)
         self.device = device
         
     def _generate_random_candidate(self) -> None:
@@ -50,7 +53,7 @@ class NEIOptimizer(Optimizer):
             candidate[bound_key] = param
         return candidate
                 
-    def initialize_model(self, candidate, training_result, state_dict=None):
+    def _initialize_model(self, candidate, training_result, state_dict=None):
         r""" TODO
 
         :param candidate: 
@@ -92,9 +95,9 @@ class NEIOptimizer(Optimizer):
             pass
         else:
             print(f"Optimizer received \nCandidate: {candidate} \nTrainer info: {trainer_info}")
-            mll, model = self.initialize_model(candidate, trainer_info["result"])
+            mll, model = self._initialize_model(candidate, trainer_info["result"])
             fit_gpytorch_model(mll)
-            qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=0)
+            qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=self.seed)
             qNEI = qNoisyExpectedImprovement(
                 model=model, 
                 X_baseline=torch.tensor([list(o["candidate"].values()) for o in self.observations],
@@ -107,27 +110,33 @@ class NEIOptimizer(Optimizer):
             upper_bounds = [bound[1] for bound in self.bounds.values()]
             print(f"Bounds: {lower_bounds}, {upper_bounds}")
             bounds_torch = torch.tensor([lower_bounds, upper_bounds], device=self.device, dtype=NEIOptimizer.DTYPE)
-            torch_candidate, _ = optimize_acqf(
-                acq_function=qNEI,
-                bounds=bounds_torch,
-                q=1,              # Generate only one candidate at a time
-                num_restarts=10,  # ???
-                raw_samples=500,  # Sample on GP using Sobel sequence
-                options={
-                    "batch_limit": 5,
-                    "max_iter": 200,
-                    "seed": 0
-                }
-            )  
+            
+            # Try-except to handle a weird bug
+            # 
+            try:
+                torch_candidate, _ = optimize_acqf(
+                    acq_function=qNEI,
+                    bounds=bounds_torch,
+                    q=1,              # Generate only one candidate at a time
+                    num_restarts=10,  # ???
+                    raw_samples=500,  # Sample on GP using Sobel sequence
+                    options={
+                        "batch_limit": 5,
+                        "max_iter": 200,
+                        "seed": self.seed
+                    }
+                )  
+            except NanError as e:
+                print("The weird bug showed up. Using another candidate..")
+                return self.generate_candidate(candidate, trainer_info)
             
             candidate = {}
             for i, key in enumerate(self.get_labels()):
                 candidate[key] = torch_candidate.cpu().numpy()[0][i]
                 
-            print(f"Got: {trainer_info}, sending candidate: {candidate}"
-                  f"All observations are:"
-                  f"{self.observations}"
-                  f"Pending: {self.pending_candidates}")
+            print(f"Got: {trainer_info}, sending candidate: {candidate}\n"
+                  f"Number of observations: {len(self.observations)}, "
+                  f"Number of Trainers running: {self.num_trainers}")
                 
             return candidate
                 
