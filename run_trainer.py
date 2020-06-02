@@ -4,7 +4,7 @@ from time import sleep
 import torch
 from botorch.test_functions.synthetic import Hartmann
 
-from src.synthetic_trainers import NegHartmannTrainer
+from src.synthetic_trainers.neghartmann_trainer import NegHartmannTrainer
 
 
 if __name__ == "__main__":
