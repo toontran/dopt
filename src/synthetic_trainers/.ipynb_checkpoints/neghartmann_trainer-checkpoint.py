@@ -12,7 +12,7 @@ class NegHartmannTrainer(Trainer):
     NOISE_SE = 0.5
     NOISE_OF_NOISE = 0.1
     NOISE_FURTHER = 0.2
-    GLOBAL_MAXIMUM = Hartmann(negate=true).optimal_value 
+    GLOBAL_MAXIMUM = Hartmann(negate=True).optimal_value 
     
     def get_observation(self, candidate: Dict[str, Any]) \
             -> Dict[str, Any]:

@@ -108,7 +108,6 @@ class NEIOptimizer(Optimizer):
             # Torch based bounds
             lower_bounds = [bound[0] for bound in self.bounds.values()]
             upper_bounds = [bound[1] for bound in self.bounds.values()]
-            print(f"Bounds: {lower_bounds}, {upper_bounds}")
             bounds_torch = torch.tensor([lower_bounds, upper_bounds], device=self.device, dtype=NEIOptimizer.DTYPE)
             
             # Try-except to handle a weird bug
