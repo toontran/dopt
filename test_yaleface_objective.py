@@ -128,7 +128,7 @@ def run_train_net_once(yaleData, train_idx, test_idx, args):
         
     return test_acc[-1]
 
-def run_train_net_kfold(num_folds, args):
+def run_train_net_kfold(args):
     yaleData = ImageFolder('data/CroppedYale/',
                        transform=transforms.Compose([
                            transforms.Grayscale(),
@@ -136,7 +136,7 @@ def run_train_net_kfold(num_folds, args):
                            transforms.ColorJitter(brightness=.5, contrast=.3), # Random recolorization every load.
                            transforms.ToTensor()
                        ]))
-    kfold = KFold(n_splits=n_splits, shuffle=True, random_state=args.seed)
+    kfold = KFold(n_splits=args.num_folds, shuffle=True, random_state=args.seed)
     
     results = []
     for i, (train_idx, test_idx) in enumerate(kfold.split(yaleData)):
@@ -159,6 +159,7 @@ if __name__ == "__main__":
         lr=1.0,
         gamma=0.7,
         log_interval=250, # was 250
-        save_model=False
+        save_model=False,
+        num_folds=2
     )
-    run_train_net_kfold(num_folds, args)
+    run_train_net_kfold(args)

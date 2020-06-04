@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from time import sleep
+from argparse import Namespace
 
 import torch
 from botorch.test_functions.synthetic import Hartmann
@@ -19,7 +20,6 @@ class YaleFaceTrainer(Trainer):
         :param candidate:
         :return:
         """
-        num_folds = 5
         args = Namespace(
             no_cuda=False, 
             seed=1, 
@@ -29,10 +29,11 @@ class YaleFaceTrainer(Trainer):
             lr=candidate["lr"],
             gamma=0.7,
             log_interval=250, # was 250
-            save_model=False
+            save_model=False,
+            num_folds = 5
         )
         
-        mean, variance = test_yaleface_objective(num_folds, args)
+        mean, variance = run_train_net_kfold(args)
         return mean, variance
 
 
