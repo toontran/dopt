@@ -5,7 +5,7 @@ import torch
 from botorch.test_functions.synthetic import Hartmann
 
 from src.trainer import Trainer
-from src.synthetic_trainers.neghartmann_trainer import NegHartmannTrainer
+# from src.synthetic_trainers.neghartmann_trainer import NegHartmannTrainer
 from test_yaleface_objective import run_train_net_kfold
 
 
@@ -32,11 +32,12 @@ class YaleFaceTrainer(Trainer):
             save_model=False
         )
         
-        test_yaleface_objective(num_folds, args)
+        mean, variance = test_yaleface_objective(num_folds, args)
+        return mean, variance
 
 
 if __name__ == "__main__":
-    trainer = NegHartmannTrainer(host="jvs008-r1.bucknell.edu",
+    trainer = YaleFaceTrainer(host="jvs008-r1.bucknell.edu",
                                  port="15555")
     trainer.run()
     

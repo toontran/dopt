@@ -10,7 +10,7 @@ CONFIG["distribute"] = {
         'tst008@acet116-lnx-10.bucknell.edu',
         'tst008@acet116-lnx-11.bucknell.edu',
         'tst008@acet116-lnx-12.bucknell.edu',
-        'localhost'
+#         'localhost'
     ],
     "max_jobs": 1, # Num jobs per computer
     "min_gpu": 500, # TODO: Only use computers with GPU used lower than min_gpu (mbs)
