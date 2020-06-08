@@ -30,24 +30,31 @@ from torch.nn import Module
 class Net(nn.Module):
     def __init__(self, args):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1) # padding is 0 by default, so 
+        self.expected_input_shape = (1, 1, 192, 168)
+        self.conv1 = nn.Conv2d(1, args.conv1, args.conv1_kernel, 1) # padding is 0 by default, so 
                                             # we lose a pixel on each side.
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.dropout1 = nn.Dropout2d(0.25)
-        self.dropout2 = nn.Dropout2d(0.5)
-#         self.fc1 = nn.Linear(53568, 128)
-#         self.fc2 = nn.Linear(128, 38)
-        self.fc1 = nn.Linear(53568, 38)
+        self.conv2 = nn.Conv2d(args.conv1, args.conv2, args.conv2_kernel, 1)
+        self.dropout1 = nn.Dropout2d(args.dropout1)
+        self.dropout2 = nn.Dropout2d(args.dropout2)
+        self.maxpool1 = nn.MaxPool2d(args.maxpool1)
+        self.maxpool2 = nn.MaxPool2d(args.maxpool2)
+        
+        # Calculate the input of Linear layer
+        conv1_out = self.get_output_shape(self.maxpool1, self.get_output_shape(self.conv1, self.expected_input_shape))
+        conv2_out = self.get_output_shape(self.maxpool2, self.get_output_shape(self.conv2, conv1_out)) 
+        fc1_in = np.prod(list(conv2_out)) # Flatten
+
+        self.fc1 = nn.Linear(fc1_in, 38)
 
     def forward(self, x):
         x = self.conv1(x) # input: 1x192x168, output: 32x190x166
         x = F.relu(x)
-        x = F.max_pool2d(x, 2) # input: 32 x 95 x 83
-        x = self.conv2(x) # input: 32x95x83, output: 64x93x81
+        x = self.maxpool1(x) 
+        x = self.conv2(x) 
         x = F.relu(x)
-        x = F.max_pool2d(x, 3) # input: 64x93x81, output: 64x31x27
-        x = self.dropout1(x) # randomly zero out some of the features. (in training only)
-        x = torch.flatten(x, 1) # flatten the 64x31x27 to a single dimension (53568) 
+        x = self.maxpool2(x) 
+        x = self.dropout1(x) 
+        x = torch.flatten(x, 1) 
         x = self.fc1(x) 
 #         x = F.relu(x)
 #         x = self.dropout2(x)
@@ -55,6 +62,10 @@ class Net(nn.Module):
         output = F.log_softmax(x, dim=1)
         # output = torch.sigmoid(x)
         return output
+    
+    # TODO: Use from utils instead
+    def get_output_shape(self, model, image_dim):
+        return model(torch.rand(*(image_dim))).data.shape
 
 def train(args, model, device, train_loader, optimizer, epoch):    
     model.train()

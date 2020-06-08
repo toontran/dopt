@@ -21,6 +21,13 @@ class YaleFaceTrainer(Trainer):
         :return:
         """
         args = Namespace(
+            conv1=round(candidate["conv1"]),
+            conv1_stride=round(candidate["conv1_kernel"]),
+            conv2=round(candidate["conv2"]),
+            conv2_stride=round(candidate["conv2_kernel"]),
+            dropout1=candidate["dropout1"],
+            maxpool1=round(candidate["maxpool1"]),
+            maxpool2=round(candidate["maxpool2"]),
             no_cuda=False, 
             seed=1, 
             batch_size=round(candidate["batch_size"]),
@@ -44,7 +51,7 @@ class YaleFaceTrainer(Trainer):
 
 
 if __name__ == "__main__":
-    trainer = NegHartmannTrainer(host="jvs008-r1.bucknell.edu",
+    trainer = YaleFaceTrainer(host="jvs008-r1.bucknell.edu",
                                  port="15555")
     trainer.run()
     

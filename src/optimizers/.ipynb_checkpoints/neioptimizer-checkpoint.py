@@ -100,7 +100,7 @@ class NEIOptimizer(Optimizer):
             bounds: Dict[str, Tuple[float, float]],
             device: Optional[str] = "cpu",
             seed: Optional[int] = random.randint(1, 100000),
-            avoid_infeasibility: Optional[bool] = True,
+            avoid_infeasibility: Optional[bool] = False,
             is_possible: Optional[Callable[[Tensor], bool]] = None,
             outcome_feasibility: Optional[Callable[[Tensor], float]] = None
         ) -> None:
@@ -142,7 +142,6 @@ class NEIOptimizer(Optimizer):
         # Group candidates, objectives and variances from observations 
         train_x, train_obj, train_var, train_con = [], [], [], []
         for o in self.observations:
-            print(o)
             train_x.append(list(o["candidate"].values()))
             train_obj.append(o["result"][0])
             train_var.append(o["result"][1])
@@ -160,7 +159,7 @@ class NEIOptimizer(Optimizer):
 
         # define models for objective and constraint
         model_obj = HeteroskedasticSingleTaskGP(train_x, train_obj, train_var).to(train_x)
-        if avoid_infeasibility:
+        if self.avoid_infeasibility:
             model_con = FixedNoiseGP(train_x, train_con, 
                                      torch.tensor(0.0, device=self.device).expand_as(train_con))\
                             .to(train_x)
@@ -168,7 +167,8 @@ class NEIOptimizer(Optimizer):
             model = ModelListGP(model_obj, model_con) 
             mll = SumMarginalLogLikelihood(model.likelihood, model)
         else:
-            mll = ExactMarginalLogLikelihood(model.likelihood, model_obj)
+            model = model_obj
+            mll = ExactMarginalLogLikelihood(model.likelihood, model)
             
         # load state dict if it is passed
         if state_dict is not None:
@@ -191,7 +191,7 @@ class NEIOptimizer(Optimizer):
             fit_gpytorch_model(mll)
             qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=self.seed)
             
-            if avoid_infeasibility:
+            if not self.avoid_infeasibility:
                 qNEI = qNEIModified(
                     model=model, 
                     X_baseline=torch.tensor([list(o["candidate"].values()) for o in self.observations],
