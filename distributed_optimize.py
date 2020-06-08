@@ -1,7 +1,8 @@
 import time
 import sys
-
 from multiprocessing import Process
+
+import torch
 
 from src.optimizers import NEIOptimizer
 from src.distributed.submitMaster import processCommandsInParallel
@@ -18,11 +19,20 @@ COMMAND = "module switch python/3.7-2020-05-28" + \
           " && python3 ~/PycharmProjects/summer/run_trainer.py"
 print("Using config: ", CONFIG)
 
-
-def start_optimizer(bounds):
+def start_optimizer(bounds, is_feasible):
     r"""Start the optimizer and listen to available trainers"""
+    
+    def is_possible(X):
+        if torch.sum(X) - 3 <= 0:
+            return True
+        return False
+    
+    def outcome_constraint(X):
+        # Is infeasible if > 0
+        return torch.sum(X) - 3
+    
     print("Starting optimizer..")
-    optimizer = NEIOptimizer("hartmann.json", bounds, device="cpu")
+    optimizer = NEIOptimizer("hartmann.json", bounds, device="cpu",  is_possible=is_possible)
     optimizer.run(host=None)
 
 def start_trainers(num_trainers_active=2):
@@ -46,21 +56,30 @@ def main():
         print(machine)
         
     # Bounds of the sample space
+#     bounds = {
+#         'batch_size': [2, 10],
+#         'lr': [0.001, 10.0]
+#     }
     bounds = {
-        'batch_size': [2, 10],
-        'lr': [0.001, 10.0]
+        "x1": [0, 1],
+        "x2": [0, 1],
+        "x3": [0, 1],
+        "x4": [0, 1],
+        "x5": [0, 1],
+        "x6": [0, 1],
     }
     
     # Open two processes: One starts the optimizer, the
     # other starts all the trainers  
     # https://pymotw.com/2/multiprocessing/basics.html
-    o = Process(target=start_optimizer, args=(bounds,))
+    o = Process(target=start_optimizer, args=(bounds, lambda x: True))
     o.daemon = True
     
-    t = Process(target=start_trainers, args=(3,))
+    t = Process(target=start_trainers, args=(1,))
     t.daemon = False
 
     o.start()
+    time.sleep(1)
     t.start()
     
     while True:

@@ -25,9 +25,10 @@ from torch import nn
 from torch.autograd import Variable
 from torch.nn import Module
 
-
+# Maybe test the effect of higher dimensional space on BO
+# Set up contraints?
 class Net(nn.Module):
-    def __init__(self):
+    def __init__(self, args):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, 1) # padding is 0 by default, so 
                                             # we lose a pixel on each side.
@@ -107,7 +108,7 @@ def run_train_net_once(yaleData, train_idx, test_idx, args):
         batch_size=args.batch_size, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(testFaces,
         batch_size=args.test_batch_size, shuffle=False, **kwargs)
-    model = Net().to(device)
+    model = Net(args).to(device)
     
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     scheduler = StepLR(optimizer, step_size=2, gamma=args.gamma)
@@ -129,7 +130,7 @@ def run_train_net_once(yaleData, train_idx, test_idx, args):
     return test_acc[-1]
 
 def run_train_net_kfold(args):
-    yaleData = ImageFolder('data/CroppedYale/',
+    yaleData = ImageFolder('~/PycharmProjects/summer/data/CroppedYale/',
                        transform=transforms.Compose([
                            transforms.Grayscale(),
                            transforms.Resize((192,168), interpolation=0),

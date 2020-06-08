@@ -51,6 +51,7 @@ class Trainer(ABC):
             trainer_info["result"] = observation
             trainer_info["time_started"] = start.strftime("%m/%d/%Y-%H:%M:%S")
             trainer_info["time_elapsed"] = round(elapsed.seconds/3600, 2) # In hours, rounded to 2nd decimal
+            trainer_info["feasibility"] = self.get_feasibility(candidate, observation)
             
             out_message = json.dumps(trainer_info)
             writer.write(out_message.encode("utf8"))
@@ -70,3 +71,18 @@ class Trainer(ABC):
         :return:
         """
         raise NotImplementedError
+        
+    @abstractmethod
+    def get_feasibility(self, 
+                        candidate: Dict[str, Any],
+                        observation: Dict[str, Any]) \
+            -> float:
+        r"""Return the feasibility of the observation, based on both the 
+        candidate (set of input hyperparameters) and the output of 
+        the objective function.
+        
+        :param candidate:
+        :param observation:
+        :return:
+        """
+        return None
