@@ -59,20 +59,7 @@ class Trainer(ABC):
             
         writer.close()
         print("Closing")
-
-    @abstractmethod
-    def get_observation(self, candidate: Dict[str, Any]) \
-            -> Dict[str, Any]:
-        r""" Get observation by plugging the candidate into objective function.
-        This method is made abstract to easier modify the objective function
-        to run on different platforms.
-
-        :param candidate:
-        :return:
-        """
-        raise NotImplementedError
         
-    @abstractmethod
     def get_feasibility(self, 
                         candidate: Dict[str, Any],
                         observation: Dict[str, Any]) \
@@ -86,3 +73,15 @@ class Trainer(ABC):
         :return:
         """
         return None
+
+    @abstractmethod
+    def get_observation(self, candidate: Dict[str, Any]) \
+            -> Dict[str, Any]:
+        r""" Get observation by plugging the candidate into objective function.
+        This method is made abstract to easier modify the objective function
+        to run on different platforms.
+
+        :param candidate:
+        :return:
+        """
+        raise NotImplementedError
