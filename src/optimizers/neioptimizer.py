@@ -142,6 +142,7 @@ class NEIOptimizer(Optimizer):
         # Group candidates, objectives and variances from observations 
         train_x, train_obj, train_var, train_con = [], [], [], []
         for o in self.observations:
+            print(o)
             train_x.append(list(o["candidate"].values()))
             train_obj.append(o["result"][0])
             train_var.append(o["result"][1])

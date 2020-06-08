@@ -72,7 +72,7 @@ class Trainer(ABC):
         :param observation:
         :return:
         """
-        return None
+        return 0.0
 
     @abstractmethod
     def get_observation(self, candidate: Dict[str, Any]) \

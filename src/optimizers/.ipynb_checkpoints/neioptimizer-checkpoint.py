@@ -142,6 +142,7 @@ class NEIOptimizer(Optimizer):
         # Group candidates, objectives and variances from observations 
         train_x, train_obj, train_var, train_con = [], [], [], []
         for o in self.observations:
+            print(o)
             train_x.append(list(o["candidate"].values()))
             train_obj.append(o["result"][0])
             train_var.append(o["result"][1])
@@ -199,11 +200,17 @@ class NEIOptimizer(Optimizer):
                     is_possible=self.is_possible
                 )
             else:
+                # define a feasibility-weighted objective for optimization
+                constrained_obj = ConstrainedMCObjective(
+                    objective=lambda Z: Z[..., 0],
+                    constraints=[lambda Z: Z[..., 1]],
+                )
                 qNEI = qNoisyExpectedImprovement(
                     model=model, 
                     X_baseline=torch.tensor([list(o["candidate"].values()) for o in self.observations],
                                             device=self.device, dtype=NEIOptimizer.DTYPE),
-                    sampler=qmc_sampler
+                    sampler=qmc_sampler,
+                    objective=constrained_obj
                 )
 
             # Torch based bounds
