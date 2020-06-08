@@ -21,7 +21,7 @@ COMMAND = "module switch python/3.7-2020-05-28" + \
           " && python3 ~/PycharmProjects/summer/run_trainer.py"
 print("Using config: ", CONFIG)
 
-def start_optimizer(bounds, is_feasible):
+def start_optimizer(bounds):
     r"""Start the optimizer and listen to available trainers"""
     
     def is_possible(X):
@@ -85,9 +85,9 @@ def main():
     # TODO: Deal with ordering problem
     bounds = {
         "conv1": [16, 128],
-        "conv1_stride": [2, 10],
+        "conv1_kernel": [2, 10],
         "conv2": [64, 256],
-        "conv2_stride": [2, 10],
+        "conv2_kernel": [2, 10],
         "dropout1": [0, 1],
         "maxpool1": [0, 10],
         "maxpool2": [0, 10],
@@ -98,12 +98,10 @@ def main():
     # Open two processes: One starts the optimizer, the
     # other starts all the trainers  
     # https://pymotw.com/2/multiprocessing/basics.html
-    o = Process(target=start_optimizer, args=(bounds, lambda x: True))
+    o = Process(target=start_optimizer, args=(bounds,))
     o.daemon = True
-    
     t = Process(target=start_trainers, args=(1,))
     t.daemon = False
-
     o.start()
     time.sleep(1)
     t.start()

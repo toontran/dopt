@@ -22,9 +22,9 @@ class YaleFaceTrainer(Trainer):
         """
         args = Namespace(
             conv1=round(candidate["conv1"]),
-            conv1_stride=round(candidate["conv1_kernel"]),
+            conv1_kernel=round(candidate["conv1_kernel"]),
             conv2=round(candidate["conv2"]),
-            conv2_stride=round(candidate["conv2_kernel"]),
+            conv2_kernel=round(candidate["conv2_kernel"]),
             dropout1=candidate["dropout1"],
             maxpool1=round(candidate["maxpool1"]),
             maxpool2=round(candidate["maxpool2"]),

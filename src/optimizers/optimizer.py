@@ -139,7 +139,7 @@ class Optimizer(ABC):
             self.pending_candidates[trainer_index] = candidate
             
             # Receive info of the Trainer including training result(s)
-            in_message: str = (await reader.read(255)).decode("utf8")
+            in_message: str = (await reader.read(1023)).decode("utf8")
             trainer_info: Dict = json.loads(in_message)
                 
             observation = {

@@ -73,7 +73,9 @@ class qNEIModified(qNoisyExpectedImprovement):
                 # TODO: Refactor!!
                 result.view(-1, 1)[i] = torch.tensor(float("-inf"), 
                                                                    device=X.device)
-#                 print("Damn, it's impossible dougg!")
+                print("N", end="")
+            else:
+                print("Passed!")
         return result
                 
     def forward(self, X: Tensor) -> Tensor:
