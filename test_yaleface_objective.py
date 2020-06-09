@@ -35,7 +35,6 @@ class Net(nn.Module):
                                             # we lose a pixel on each side.
         self.conv2 = nn.Conv2d(args.conv1, args.conv2, args.conv2_kernel, 1)
         self.dropout1 = nn.Dropout2d(args.dropout1)
-        self.dropout2 = nn.Dropout2d(args.dropout2)
         self.maxpool1 = nn.MaxPool2d(args.maxpool1)
         self.maxpool2 = nn.MaxPool2d(args.maxpool2)
         

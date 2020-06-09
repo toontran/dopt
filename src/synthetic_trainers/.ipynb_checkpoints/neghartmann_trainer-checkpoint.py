@@ -34,6 +34,7 @@ class NegHartmannTrainer(Trainer):
         observed_variance = observed_noise ** 2
         noisy_objective = exact_objective + observed_noise + \
                           NegHartmannTrainer.NOISE_FURTHER * torch.randn_like(exact_objective)
+        sleep(60)
         return (
             float(noisy_objective.cpu().numpy()[0]), 
             float(observed_variance.cpu().numpy()[0])

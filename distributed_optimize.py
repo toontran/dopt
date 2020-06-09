@@ -4,6 +4,7 @@ from multiprocessing import Process
 
 import torch
 from torch import nn
+import numpy as np
 
 from src.optimizers import NEIOptimizer
 from src.distributed.submitMaster import processCommandsInParallel
@@ -24,7 +25,7 @@ print("Using config: ", CONFIG)
 def start_optimizer(bounds):
     r"""Start the optimizer and listen to available trainers"""
     
-    def is_possible(X):
+    def get_feasibility(X):
         expected_input_shape = (1, 1, 192, 168)
         conv1_in = round(float(X[0]))
         conv1_kernel = round(float(X[1]))
@@ -43,23 +44,32 @@ def start_optimizer(bounds):
         conv2_out = get_output_shape(
             maxpool2, get_output_shape(conv2, conv1_out)
         ) 
+        fc1_in = np.prod(list(conv2_out)) # Flatten
         
-        if conv1_out[-2] % maxpool1_in == 0 and \
-            conv1_out[-1] % maxpool1_in == 0:
-            return True
-        if conv2_out[-2] % maxpool2_in == 0 and \
-            conv2_out[-1] % maxpool2_in == 0:
-            return True
-        if conv1_in < conv2_in:
-            return True
-        return False
+        feasibility = 0 # Default is 0, meaning feasible, >0 means not feasible
+        if conv1_out[-2] % maxpool1_in != 0 or \
+            conv1_out[-1] % maxpool1_in != 0:
+            print("DANG", end="")
+            feasibility += 1
+        if conv2_out[-2] % maxpool2_in != 0 or \
+            conv2_out[-1] % maxpool2_in != 0:
+            print("DANGG", end="")
+            feasibility += 1
+        if conv1_in > conv2_in:
+            print("DANGGG", end="")
+            feasibility += 1
+        if fc1_in > 10**5:
+            print("DANGGGG", end="")
+            feasibility += 1
+        print(f"Conv1: {get_output_shape(conv1, expected_input_shape)} % {maxpool1_in}, Conv2: {get_output_shape(conv2, conv1_out)} % {maxpool2_in}, Linear: {fc1_in}, Feasibility: {feasibility}")
+        return feasibility
     
-#     def outcome_constraint(X):
-#         # Is infeasible if > 0
-#         return torch.sum(X) - 3
+    def get_feasibility(X):
+        # Is infeasible if > 0
+        return torch.sum(X) - 3
     
     print("Starting optimizer..")
-    optimizer = NEIOptimizer("yaleface.json", bounds, device="cpu",  is_possible=is_possible)
+    optimizer = NEIOptimizer("hartmann.json", bounds, device="cpu",  get_feasibility=get_feasibility)
     optimizer.run(host=None)
 
 def start_trainers(num_trainers_active=2):
@@ -83,16 +93,24 @@ def main():
         print(machine)
         
     # TODO: Deal with ordering problem
+#     bounds = {
+#         "conv1": [16, 32],
+#         "conv1_kernel": [2, 10],
+#         "conv2": [40, 64],
+#         "conv2_kernel": [2, 10],
+#         "dropout1": [0, 1],
+#         "maxpool1": [2, 10],
+#         "maxpool2": [2, 10],
+#         'batch_size': [2, 7],
+#         'lr': [0.001, 10.0]
+#     }
     bounds = {
-        "conv1": [16, 128],
-        "conv1_kernel": [2, 10],
-        "conv2": [64, 256],
-        "conv2_kernel": [2, 10],
-        "dropout1": [0, 1],
-        "maxpool1": [0, 10],
-        "maxpool2": [0, 10],
-        'batch_size': [2, 10],
-        'lr': [0.001, 10.0]
+        "x1": [0,1],
+        "x2": [0,1],
+        "x3": [0,1],
+        "x4": [0,1],
+        "x5": [0,1],
+        "x6": [0,1],
     }
     
     # Open two processes: One starts the optimizer, the
@@ -107,8 +125,8 @@ def main():
     t.start()
     
     while True:
-        time.sleep(1)
         if not o.is_alive():
+            print("BRAKINGG BAD")
             break
     
     o.kill(), t.kill()
