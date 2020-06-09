@@ -10,6 +10,15 @@ CONFIG["distribute"] = {
         'tst008@acet116-lnx-10.bucknell.edu',
         'tst008@acet116-lnx-11.bucknell.edu',
         'tst008@acet116-lnx-12.bucknell.edu',
+        'tst008@acet116-lnx-13.bucknell.edu',
+        'tst008@acet116-lnx-14.bucknell.edu',
+        'tst008@acet116-lnx-15.bucknell.edu',
+        'tst008@acet116-lnx-16.bucknell.edu',
+        'tst008@acet116-lnx-17.bucknell.edu',
+        'tst008@acet116-lnx-18.bucknell.edu',
+        'tst008@acet116-lnx-19.bucknell.edu',
+        'tst008@acet116-lnx-20.bucknell.edu',
+        'tst008@acet116-lnx-21.bucknell.edu',
 #         'localhost'
     ],
     "max_jobs": 1, # Num jobs per computer

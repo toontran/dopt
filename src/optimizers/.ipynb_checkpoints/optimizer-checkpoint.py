@@ -134,7 +134,6 @@ class Optimizer(ABC):
             
             # Send candidate to Trainer
             out_message = json.dumps(candidate)
-            print(f"Out Message: {out_message}, Candidate: {candidate}")
             writer.write(out_message.encode("utf8"))
             await writer.drain()
             self.pending_candidates[trainer_index] = candidate

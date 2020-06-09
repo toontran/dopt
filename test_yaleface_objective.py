@@ -151,6 +151,7 @@ def run_train_net_kfold(args):
     
     results = []
     for i, (train_idx, test_idx) in enumerate(kfold.split(yaleData)):
+        print("Fold", i)
         test_accuracy = run_train_net_once(yaleData, train_idx, test_idx, args)
         results.append(test_accuracy)
     

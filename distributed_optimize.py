@@ -26,6 +26,7 @@ def start_optimizer(bounds):
     r"""Start the optimizer and listen to available trainers"""
     
     def get_feasibility(X):
+        print(X)
         expected_input_shape = (1, 1, 192, 168)
         conv1_in = round(float(X[0]))
         conv1_kernel = round(float(X[1]))
@@ -38,38 +39,43 @@ def start_optimizer(bounds):
         conv2 = nn.Conv2d(conv1_in, conv2_in, conv2_kernel, 1)
         maxpool1 = nn.MaxPool2d(maxpool1_in)
         maxpool2 = nn.MaxPool2d(maxpool2_in)
-        conv1_out = get_output_shape(
-            maxpool1, get_output_shape(conv1, expected_input_shape)
-        )
-        conv2_out = get_output_shape(
-            maxpool2, get_output_shape(conv2, conv1_out)
-        ) 
-        fc1_in = np.prod(list(conv2_out)) # Flatten
+        conv1_out = get_output_shape(conv1, expected_input_shape)
+        maxpool1_out = get_output_shape(maxpool1, conv1_out)
+        conv2_out = get_output_shape(conv2, maxpool1_out)
+        maxpool2_out = get_output_shape(maxpool2, conv2_out)
+        fc1_in = np.prod(list(maxpool2_out)) # Flatten
         
         feasibility = 0 # Default is 0, meaning feasible, >0 means not feasible
         if conv1_out[-2] % maxpool1_in != 0 or \
             conv1_out[-1] % maxpool1_in != 0:
-            print("DANG", end="")
             feasibility += 1
         if conv2_out[-2] % maxpool2_in != 0 or \
             conv2_out[-1] % maxpool2_in != 0:
-            print("DANGG", end="")
             feasibility += 1
         if conv1_in > conv2_in:
-            print("DANGGG", end="")
             feasibility += 1
         if fc1_in > 10**5:
-            print("DANGGGG", end="")
             feasibility += 1
-        print(f"Conv1: {get_output_shape(conv1, expected_input_shape)} % {maxpool1_in}, Conv2: {get_output_shape(conv2, conv1_out)} % {maxpool2_in}, Linear: {fc1_in}, Feasibility: {feasibility}")
+        print(f"Conv1: {get_output_shape(conv1, expected_input_shape)} % {maxpool1_in}, Conv2: {get_output_shape(conv2, maxpool1_out)} % {maxpool2_in}, Linear: {fc1_in}, Feasibility: {feasibility}")
         return feasibility
     
-    def get_feasibility(X):
-        # Is infeasible if > 0
-        return torch.sum(X) - 3
+#     def get_feasibility(X):
+#         # Is infeasible if > 0
+#         return torch.sum(X) - 2
     
     print("Starting optimizer..")
-    optimizer = NEIOptimizer("hartmann.json", bounds, device="cpu",  get_feasibility=get_feasibility)
+    initial_candidate = {
+        "conv1": 3,
+        "conv1_kernel": 3,
+        "conv2": 20,
+        "conv2_kernel": 3,
+        "dropout1": 0.5,
+        "maxpool1": 2,
+        "maxpool2": 3,
+        'batch_size': 10,
+        'lr': 0.01
+    }
+    optimizer = NEIOptimizer("yaleface.json", bounds, device="cpu",  get_feasibility=get_feasibility, initial_candidate=initial_candidate)
     optimizer.run(host=None)
 
 def start_trainers(num_trainers_active=2):
@@ -93,25 +99,25 @@ def main():
         print(machine)
         
     # TODO: Deal with ordering problem
-#     bounds = {
-#         "conv1": [16, 32],
-#         "conv1_kernel": [2, 10],
-#         "conv2": [40, 64],
-#         "conv2_kernel": [2, 10],
-#         "dropout1": [0, 1],
-#         "maxpool1": [2, 10],
-#         "maxpool2": [2, 10],
-#         'batch_size': [2, 7],
-#         'lr': [0.001, 10.0]
-#     }
     bounds = {
-        "x1": [0,1],
-        "x2": [0,1],
-        "x3": [0,1],
-        "x4": [0,1],
-        "x5": [0,1],
-        "x6": [0,1],
+        "conv1": [3, 16],
+        "conv1_kernel": [2, 10],
+        "conv2": [20, 32],
+        "conv2_kernel": [2, 10],
+        "dropout1": [0.1, 1],
+        "maxpool1": [2, 10],
+        "maxpool2": [2, 10],
+        'batch_size': [2, 7],
+        'lr': [0.001, 10.0]
     }
+#     bounds = {
+#         "x1": [0,1],
+#         "x2": [0,1],
+#         "x3": [0,1],
+#         "x4": [0,1],
+#         "x5": [0,1],
+#         "x6": [0,1],
+#     }
     
     # Open two processes: One starts the optimizer, the
     # other starts all the trainers  

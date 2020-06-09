@@ -38,7 +38,7 @@ class Trainer(ABC):
         while self.is_running:
             
             # Receive the candidate from Optimizer
-            in_message: str = (await reader.read(255)).decode("utf8")
+            in_message: str = (await reader.read(1023)).decode("utf8")
             candidate: Dict = json.loads(in_message)
                 
             # Pass candidate to objective function and get result(s)

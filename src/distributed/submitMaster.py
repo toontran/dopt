@@ -84,7 +84,6 @@ def processCommandsInParallel(commands):
     p.start()
 
     #Send the jobs in.
-    print("Sending jobs")
     for command in commands:
         pconn.send(command)
         print(command)
