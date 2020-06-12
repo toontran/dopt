@@ -9,6 +9,7 @@ import torch
 from torch import nn
 import numpy as np
 
+from src.trainer import Trainer
 from src.optimizers import NEIOptimizer
 from src.utils import (processCommandsInParallel,
                        CONFIG,
