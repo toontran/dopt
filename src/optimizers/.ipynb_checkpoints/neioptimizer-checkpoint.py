@@ -123,16 +123,19 @@ class NEIOptimizer(Optimizer):
         self.get_feasibility = lambda x: 0 if get_feasibility == None else get_feasibility(x)
         self.initial_candidate = initial_candidate
         
-    def handle_observation(self, candidate: Dict[str, Any], 
-                         trainer_info: Dict) -> None:
+    def handle_observation(self, 
+                           trainer_index: int,
+                           candidate: Dict[str, Any], 
+                           trainer_info: Dict) -> None:
         candidate_tensor = torch.tensor(list(candidate.values()), 
                                         device=self.device)
         observation = {
+            "id": trainer_index,
             "candidate": candidate, 
             "result": trainer_info["result"],
             "time_started": trainer_info["time_started"],
             "time_elapsed": trainer_info["time_elapsed"],
-            "feasibility": self.get_feasibility(candidate_tensor)
+            "feasibility": self.get_feasibility(candidate_tensor).item()
         }
         self.observations.append(observation)
         self.pending_candidates[trainer_index] = None
@@ -250,7 +253,7 @@ class NEIOptimizer(Optimizer):
             for i, key in enumerate(self.get_labels()):
                 candidate[key] = torch_candidate.cpu().numpy()[0][i]
                 
-            print(f"Got: {trainer_info}, sending candidate: {candidate}\n"
+            print(f"Sending candidate: {candidate}\n"
                   f"Number of observations: {len(self.observations)}, "
                   f"Number of Trainers running: {self.num_trainers}")
                 
