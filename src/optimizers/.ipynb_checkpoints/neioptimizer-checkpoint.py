@@ -25,6 +25,7 @@ from botorch.acquisition.objective import ConstrainedMCObjective
 from src.optimizers.optimizer import Optimizer
 
 
+# TODO: Refactor
 class qNEIModified(qNoisyExpectedImprovement):
     r"""A regular Noisy Expected Improvement, but with  """
     def __init__(
@@ -122,6 +123,21 @@ class NEIOptimizer(Optimizer):
         self.get_feasibility = lambda x: 0 if get_feasibility == None else get_feasibility(x)
         self.initial_candidate = initial_candidate
         
+    def handle_observation(self, candidate: Dict[str, Any], 
+                         trainer_info: Dict) -> None:
+        candidate_tensor = torch.tensor(list(candidate.values()), 
+                                        device=self.device)
+        observation = {
+            "candidate": candidate, 
+            "result": trainer_info["result"],
+            "time_started": trainer_info["time_started"],
+            "time_elapsed": trainer_info["time_elapsed"],
+            "feasibility": get_feasibility(candidate_tensor)
+        }
+        self.observations.append(observation)
+        self.pending_candidates[trainer_index] = None
+        self._save_observation(observation)
+        
     def _generate_random_candidate(self) -> None:
         r"""Uniformly generate a candidate in the known boundaries"""
         candidate = {}
@@ -137,10 +153,7 @@ class NEIOptimizer(Optimizer):
         print("Feasible!")
         return candidate
                 
-    def _initialize_model(self, candidate: Dict[str, Any], 
-                          training_result: Tuple, 
-                          feasibility: float,
-                          state_dict: Optional[Dict] = None):
+    def _initialize_model(self, state_dict: Optional[Dict] = None):
         r""" TODO: Refactor variable naming - training_result
 
         :param candidate: 
@@ -152,12 +165,9 @@ class NEIOptimizer(Optimizer):
             train_obj.append(o["result"][0])
             train_var.append(o["result"][1])
             train_con.append(o["feasibility"])
-        train_x.append(list(candidate.values()))
-        train_obj.append(training_result[0])
-        train_var.append(training_result[1])
-        train_con.append(feasibility)
         
-        # Put into torch tensor
+        # Put into torch tensor 
+        # TODO: make a util function for turning dict -> torch.tensor
         train_x = torch.tensor(train_x, device=self.device, dtype=NEIOptimizer.DTYPE)
         train_obj = torch.tensor(train_obj, device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-1)
         train_var = torch.tensor(train_var, device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-1)
@@ -177,11 +187,9 @@ class NEIOptimizer(Optimizer):
             model.load_state_dict(state_dict)
         return mll, model
         
-    def generate_candidate(self, 
-                           candidate: Union[Dict[str, Any], None],
-                           trainer_info: Union[Dict, None]) \
+    def generate_candidate(self) \
             -> Dict[str, Any]:
-        if candidate is None and trainer_info is None and len(self.observations) == 0:
+        if len(self.observations) == 0:
             # Generate a random candidate to startup the optimizing process
             print("Generating initial candidate")
             if self.initial_candidate == None:
@@ -192,16 +200,9 @@ class NEIOptimizer(Optimizer):
                 raise Exception("User initial candidate is not feasible!")
             else:
                 return self.initial_candidate
-        elif candidate is None or trainer_info is None and len(self.observations) > 0:
-            observation = self.observations[-1]
-            trainer_info = {
-                k:observation[k] for k in observation \
-                                    if k != "candidate" 
-            }
-            return self.generate_candidate(observation["candidate"], trainer_info)
         else:
-            print(f"Optimizer received \nCandidate: {candidate} \nTrainer info: {trainer_info}")
-            mll, model = self._initialize_model(candidate, trainer_info["result"], trainer_info["feasibility"])
+            print(f"Optimizer received \n{self.observations[-1]}")
+            mll, model = self._initialize_model()
             fit_gpytorch_model(mll)
             qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=self.seed)
             

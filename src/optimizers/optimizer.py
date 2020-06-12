@@ -131,7 +131,7 @@ class Optimizer(ABC):
         while self.is_running():
             
             # Find one potential candidate to try next based on the info
-            candidate: Dict[str, Any] = self.generate_candidate(candidate, trainer_info)
+            candidate: Dict[str, Any] = self.generate_candidate()
             
             # Send candidate to Trainer
             out_message = json.dumps(candidate)
@@ -143,30 +143,28 @@ class Optimizer(ABC):
             in_message: str = (await reader.read(1023)).decode("utf8")
             trainer_info: Dict = json.loads(in_message)
                 
-            observation = {
-                "candidate": candidate, 
-                "result": trainer_info["result"],
-                "time_started": trainer_info["time_started"],
-                "time_elapsed": trainer_info["time_elapsed"]
-            }
+            self.handle_observation(candidate, trainer_info)
             
-            self.observations.append(observation)
-            self.pending_candidates[trainer_index] = None
-            self._save_observation(observation)
             
         writer.close()
         self.num_trainers -= 1
         print(f"Closing Trainer at {writer.get_extra_info('peername')}")
+        
+    def handle_observation(self, candidate: Dict[str, Any], 
+                         trainer_info: Dict) -> None:
+        observation = {
+            "candidate": candidate, 
+            "result": trainer_info["result"],
+            "time_started": trainer_info["time_started"],
+            "time_elapsed": trainer_info["time_elapsed"]
+        }
+        self.observations.append(observation)
+        self.pending_candidates[trainer_index] = None
+        self._save_observation(observation)
 
     @abstractmethod
-    def generate_candidate(self, 
-                           candidate: Union[Dict[str, Any], None],
-                           trainer_info: Union[Dict, None]) \
+    def generate_candidate(self) \
             -> Dict[str, Any]:
-        r"""Draw the best candidate to evaluate.
-
-        :param candidate: 
-        :param trainer_info: Dictionary containing TODO
-        """
+        r"""Draw the best candidate to evaluate based on known observations."""
         raise NotImplementedError
             

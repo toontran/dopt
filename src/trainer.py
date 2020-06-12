@@ -62,7 +62,7 @@ class Trainer(ABC):
     @abstractmethod
     def get_observation(self, candidate: Dict[str, Any]) \
             -> Dict[str, Any]:
-        r""" Get observation by plugging the candidate into objective function.
+        r"""Get observation by plugging the candidate into objective function.
         This method is made abstract to easier modify the objective function
         to run on different platforms.
 
@@ -70,3 +70,4 @@ class Trainer(ABC):
         :return:
         """
         raise NotImplementedError
+        

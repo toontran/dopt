@@ -34,6 +34,7 @@ COMMAND = {
 # }
 print("Using config: ", CONFIG)
 
+
 # Plug in the objective function
 class YaleFaceTrainer(Trainer):
     
@@ -74,7 +75,6 @@ class YaleFaceTrainer(Trainer):
             save_model=False,
             num_folds = 5
         )
-        
         mean, variance = run_train_net_kfold(input_args)
         return mean, variance 
 
@@ -83,7 +83,6 @@ def start_optimizer():
     r"""Start the optimizer and listen to available trainers"""
     
     def get_feasibility(X):
-        print(X)
         expected_input_shape = (1, 1, 192, 168)
         conv1_in = round(float(X[0]))
         conv1_kernel = round(float(X[1]))
@@ -141,9 +140,9 @@ def start_optimizer():
 #     }
     
     print("Starting optimizer..")
-    # In case of huge infeasibility: If no known candidate is found
-    # random sampling is utilized, making it hard to find a feasible
-    # sample. 
+    # In case of huge infeasibility: If no previous observation or 
+    # initial feasible candidate is found, random sampling is utilized,
+    # making it hard to find a feasible sample. 
     initial_candidate = { 
         "conv1": 3,
         "conv1_kernel": 3,
