@@ -59,20 +59,6 @@ class Trainer(ABC):
             
         writer.close()
         print("Closing")
-        
-    def get_feasibility(self, 
-                        candidate: Dict[str, Any],
-                        observation: Dict[str, Any]) \
-            -> float:
-        r"""Return the feasibility of the observation, based on both the 
-        candidate (set of input hyperparameters) and the output of 
-        the objective function.
-        
-        :param candidate:
-        :param observation:
-        :return:
-        """
-        return 0.0
 
     @abstractmethod
     def get_observation(self, candidate: Dict[str, Any]) \

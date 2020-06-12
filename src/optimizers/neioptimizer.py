@@ -85,7 +85,8 @@ class qNEIModified(qNoisyExpectedImprovement):
         result = super().forward(X)
         return result
 
-    
+
+# Find mean and variance of Gaussian Process
 class NEIOptimizer(Optimizer):
     r"""A Bayesian Optimizer that uses Noisy Expected Improvement
     as the acquisition function.

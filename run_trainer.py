@@ -1,9 +1,7 @@
 from typing import Dict, Any
-from time import sleep
 from argparse import Namespace
 
 import torch
-from botorch.test_functions.synthetic import Hartmann
 
 from src.trainer import Trainer
 from src.synthetic_trainers.neghartmann_trainer import NegHartmannTrainer
@@ -41,17 +39,11 @@ class YaleFaceTrainer(Trainer):
         )
         
         mean, variance = run_train_net_kfold(args)
-        return mean, variance
-    
-#     def get_feasibility(self, 
-#                         candidate: Dict[str, Any],
-#                         observation: Dict[str, Any]) \
-#             -> float:
-        
+        return mean, variance        
 
 
 if __name__ == "__main__":
-    trainer = YaleFaceTrainer(host="jvs008-r1.bucknell.edu",
+    trainer = NegHartmannTrainer(host="jvs008-r1.bucknell.edu",
                                  port="15555")
     trainer.run()
     

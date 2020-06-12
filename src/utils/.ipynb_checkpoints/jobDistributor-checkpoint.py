@@ -31,6 +31,7 @@ about the submissions made--again, see submitMaster.
 """
 
 import os, sys, shlex, subprocess, time
+import json
 
 sys.path.append(".")
 from .listQueue import listQueue
@@ -73,8 +74,8 @@ class JobDistributor(object):
             raise AssertionError('JobDistributor init ERROR: ' + \
                                  'Only one JD object allowed')
         self.instances = 1
-        for host in self.computer_list:
-            self.processes[host] = []
+        for host_cat in self.computer_list:
+            self.processes[host_cat] = {host:[] for host in self.computer_list[host_cat]}
         self.cleanComputerList()      
 
     def setMaxJobs(self, num):
@@ -92,9 +93,10 @@ class JobDistributor(object):
         print('\nSearching for host for process %i...' % (procNum))
         hostFound = False
         waitCycles = 0
+        command = json.loads(command)
         while not hostFound:
             try:
-                host = self.getHost()
+                host = self.getHost(command["category"])
                 print('Host %s chosen for proc %i.' % (host, procNum))
                 hostFound = True
                 break
@@ -107,8 +109,7 @@ class JobDistributor(object):
                 #submitMaster that calls this ensures there is
                 #availability.  This will hang if it was mistaken.
         #print('Starting command.')
-        command_line = 'ssh ' + host + ' ' + command
-
+        command_line = 'ssh ' + host + ' ' + command["command"]
 
         #This implies that shlex is maybe splitting up the command too much
         #in the case of matlab -nodisplay -r ... it thinks the commands
@@ -119,22 +120,26 @@ class JobDistributor(object):
         #We'll build our own, for simplicity's sake.  That means
         #it is solely the responsibility of the caller to construct
         #the line as it should be run from the command line of the host.
-        p = subprocess.Popen(['ssh', host, command])
+        p = subprocess.Popen(['ssh', host, command["command"]])
         
         #p = subprocess.Popen(shlex.split(command_line))
-        print('Submited to ' + host + ': ' + command)
-        self.processes[host].append(Job(host, p, command))
+        print('Submited to ' + host + ': ' + command["command"])
+        self.processes[command["category"]][host].append(Job(host, p, command["command"]))
         self.totalJobs += 1
+        print(self.processes[command["category"]][host][-1])
 
-    def getHost(self):
+    def getHost(self, host_cat):
         """Find a host among the computer_list whose load is less than maxJobs."""
         #Could loop through computer_list here, but computer_list still lists the
         #unavailable ones.  
-        for host in self.processes:
+        for host in self.processes[host_cat]:
+            
             #clean out finished jobs. Keep only those which haven't terminated.
-            self.processes[host] = [p for p in self.processes[host] if p.poll() is None]
-
-            if len(self.processes[host]) < self.maxJobs:
+            print([p for p in self.processes[host_cat][host]])
+            self.processes[host_cat][host] = [p for p in self.processes[host_cat][host]
+                                              if p.poll() is None]
+            
+            if len(self.processes[host_cat][host]) < self.maxJobs:
                 try:
                     if subprocess.check_call(shlex.split('ssh ' + host + ' date'), \
                                      stdout=subprocess.PIPE) == 0:
@@ -147,28 +152,33 @@ class JobDistributor(object):
 
     def __str__(self):
         return '[JobDistributor: %i jobs on %i hosts]' % \
-               (len(self), len(self.processes))
+               (len(self), sum([len(self.processes[host_cat])
+                               for host_cat in self.processes.values()]))
     
     def __len__(self):
         #Return number of jobs running
         return self.cleanup()
 
     def cleanup(self):
-        for host in self.processes:
-            #clean up finished processes.
-            self.processes[host] = [j for j in self.processes[host] if j.poll() is None]
-        return sum([len(plist) for plist in self.processes.values()])
+        num_jobs = 0
+        for host_cat in self.processes:
+            for host in self.processes[host_cat]:
+                self.processes[host_cat][host] = [j for j in self.processes[host_cat][host] 
+                                        if j.poll() is None]
+                num_jobs += len(self.processes[host_cat][host])
+        return num_jobs
 
     def cleanComputerList(self):
-        for host in self.computer_list:
-            try:
-                subprocess.check_call(shlex.split('ssh ' + host + ' date'), \
-                                     stdout=subprocess.PIPE);
-            except Exception as e:
-                print(e)
-                print('cleanComputerList: host %s deemed unavailable, ignoring...' \
-                      % (host))
-                self.processes.pop(host);
+        for host_cat in self.computer_list:
+            for host in self.computer_list[host_cat]:
+                try:
+                    subprocess.check_call(shlex.split('ssh ' + host + ' date'), \
+                                         stdout=subprocess.PIPE);
+                except Exception as e:
+                    print(e)
+                    print('cleanComputerList: host %s deemed unavailable, ignoring...' \
+                          % (host))
+                    self.processes[host_cat].pop(host);
     
 
 

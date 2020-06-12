@@ -65,7 +65,9 @@ def submitMaster(conn):
 
         #Distribute as many jobs as possible.
         while not jobQueue.isEmpty() and not JD.isFull():
-            JD.distribute(jobQueue.dequeue())   
+            command = JD.distribute(jobQueue.dequeue())   
+            if command != None:
+                jobQueue.enqueue(command)
             
         if not conn.poll():
             #print('Going to sleep...')
@@ -85,8 +87,7 @@ def processCommandsInParallel(commands):
 
     #Send the jobs in.
     for command in commands:
-        pconn.send(command)
-        print(command)
+        pconn.send(json.dumps(command))
 
     #Don't quit until the submitMaster says it's done.
     waitCycles = 0

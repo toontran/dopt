@@ -11,6 +11,7 @@ import numpy as np
 
 # TODO: Use logging instead of print
 # Multiple objective functions?
+# TODO: Deal with ordering problem
 class Optimizer(ABC):
     r"""Abstract base class for hyperparameter optimizers.
     Optimizer distributes candidates (sets of hyperparameters)
@@ -145,7 +146,6 @@ class Optimizer(ABC):
             observation = {
                 "candidate": candidate, 
                 "result": trainer_info["result"],
-                "feasibility": trainer_info["feasibility"],
                 "time_started": trainer_info["time_started"],
                 "time_elapsed": trainer_info["time_elapsed"]
             }

@@ -140,7 +140,7 @@ def run_train_net_once(yaleData, train_idx, test_idx, args):
     return test_acc[-1]
 
 def run_train_net_kfold(args):
-    yaleData = ImageFolder('~/PycharmProjects/summer/data/CroppedYale/',
+    yaleData = ImageFolder(args.data_folder,
                        transform=transforms.Compose([
                            transforms.Grayscale(),
                            transforms.Resize((192,168), interpolation=0),
@@ -163,15 +163,23 @@ def run_train_net_kfold(args):
 
 if __name__ == "__main__":
     args = Namespace(
+        data_folder='~/PycharmProjects/summer/data/CroppedYale/',
+        conv1=9,
+        conv1_kernel=9,
+        conv2=21,
+        conv2_kernel=7,
+        dropout1=0.174,
+        maxpool1=4,
+        maxpool2=8,
         no_cuda=False, 
         seed=1, 
-        batch_size=2,
+        batch_size=7,
         test_batch_size=1000,
         epochs=23,
-        lr=1.0,
+        lr=5.1,
         gamma=0.7,
         log_interval=250, # was 250
         save_model=False,
-        num_folds=2
+        num_folds = 5
     )
     run_train_net_kfold(args)
