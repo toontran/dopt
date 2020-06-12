@@ -1,9 +1,9 @@
 import time
-import sys
+import os, sys
 import argparse
 from argparse import Namespace
 from multiprocessing import Process
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import torch
 from torch import nn
@@ -25,8 +25,8 @@ warnings.filterwarnings("ignore")
 COMMAND = {
     "acet": "module switch python/3.7-2020-05-28" + \
             " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
-            " && python3 ~/PycharmProjects/summer/run_trainer.py --run_as client",
-    "localhost": "/opt/anaconda/envs/jupyter37/bin/python ~/summer/run_trainer.py --run_as client"
+            " && python3 ~/PycharmProjects/summer/distributed_optimizer.py --run_as client",
+    "localhost": "/opt/anaconda/envs/jupyter37/bin/python ~/summer/distributed_optimizer.py --run_as client --data_folder ~/summer/data/CroppedYale/"
 }
 # COMMAND = {
 #     "acet": "date",
@@ -36,6 +36,14 @@ print("Using config: ", CONFIG)
 
 # Plug in the objective function
 class YaleFaceTrainer(Trainer):
+    
+    def __init__(self, 
+                 args,
+                 host: Optional[str] = "127.0.0.1",
+                 port: Optional[str] = "15555"):
+        super().__init__(host=host, port=port)
+        self.args = args
+    
     def get_observation(self, candidate: Dict[str, Any]) \
             -> Dict[str, Any]:
         r""" Get observation by plugging the candidate into objective function.
@@ -45,7 +53,9 @@ class YaleFaceTrainer(Trainer):
         :param candidate:
         :return:
         """
-        args = Namespace(
+        # Simulate input
+        input_args = Namespace(
+            data_folder=self.args.data_folder,
             conv1=round(candidate["conv1"]),
             conv1_kernel=round(candidate["conv1_kernel"]),
             conv2=round(candidate["conv2"]),
@@ -65,7 +75,7 @@ class YaleFaceTrainer(Trainer):
             num_folds = 5
         )
         
-        mean, variance = run_train_net_kfold(args)
+        mean, variance = run_train_net_kfold(input_args)
         return mean, variance 
 
 
@@ -200,13 +210,18 @@ if __name__ == "__main__":
                            help='Specify the role of the machine (host or client). Defaults to host',
                            type=str, required=False,
                            default="host")
+    parser.add_argument('--data_folder', action='store', dest='data_folder',
+                           help='Specify the directory to the data folder (for clients only)',
+                           type=str, required=False,
+                           default="~/PycharmProjects/summer/data/CroppedYale/")
     args = parser.parse_args()
     
     if args.run_as == "host":
         main()
     elif args.run_as == "client":
-        trainer = YaleFaceTrainer(host="jvs008-r1.bucknell.edu",
-                                     port="15555")
+        trainer = YaleFaceTrainer(args,
+                                  host="jvs008-r1.bucknell.edu",
+                                  port="15555")
         trainer.run()
     
     
