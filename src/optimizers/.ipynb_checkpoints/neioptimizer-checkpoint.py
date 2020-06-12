@@ -132,7 +132,7 @@ class NEIOptimizer(Optimizer):
             "result": trainer_info["result"],
             "time_started": trainer_info["time_started"],
             "time_elapsed": trainer_info["time_elapsed"],
-            "feasibility": get_feasibility(candidate_tensor)
+            "feasibility": self.get_feasibility(candidate_tensor)
         }
         self.observations.append(observation)
         self.pending_candidates[trainer_index] = None
