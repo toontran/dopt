@@ -143,16 +143,19 @@ class Optimizer(ABC):
             in_message: str = (await reader.read(1023)).decode("utf8")
             trainer_info: Dict = json.loads(in_message)
                 
-            self.handle_observation(candidate, trainer_info)
+            self.handle_observation(trainer_index, candidate, trainer_info)
             
             
         writer.close()
         self.num_trainers -= 1
         print(f"Closing Trainer at {writer.get_extra_info('peername')}")
         
-    def handle_observation(self, candidate: Dict[str, Any], 
-                         trainer_info: Dict) -> None:
+    def handle_observation(self, 
+                           trainer_index: int,
+                           candidate: Dict[str, Any], 
+                           trainer_info: Dict) -> None:
         observation = {
+            "id": trainer_index,
             "candidate": candidate, 
             "result": trainer_info["result"],
             "time_started": trainer_info["time_started"],
