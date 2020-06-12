@@ -205,7 +205,7 @@ if __name__ == "__main__":
     if args.run_as == "host":
         main()
     elif args.run_as == "client":
-        trainer = NegHartmannTrainer(host="jvs008-r1.bucknell.edu",
+        trainer = YaleFaceTrainer(host="jvs008-r1.bucknell.edu",
                                      port="15555")
         trainer.run()
     
