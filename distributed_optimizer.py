@@ -9,33 +9,62 @@ import torch
 from torch import nn
 import numpy as np
 
-from src.trainer import Trainer
-from src.optimizers import NEIOptimizer
-from src.utils import (processCommandsInParallel,
-                       CONFIG,
-                       get_output_shape)
-from src.synthetic_trainers.neghartmann_trainer import NegHartmannTrainer
-from test_yaleface_objective import run_train_net_kfold # The objective function
+from dopt import NEIOptimizer, Trainer, processCommandsInParallel
+from dopt.synthetic_trainers import NegHartmannTrainer
+from dopt.utils import get_output_shape
+from test_objective_function import run_train_net_kfold # The objective function
 
 import warnings
 warnings.filterwarnings("ignore")
 
 
-# Commands to run on target machines
-COMMAND = {
-    "acet": "module switch python/3.7-2020-05-28" + \
-            " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
-            " && python3 ~/PycharmProjects/summer/distributed_optimizer.py --run_as client",
+# The configurations
+CONFIG = {}
+CONFIG["distribute"] = {
+    "computer_list": {
+        "acet": [
+            'tst008@acet116-lnx-10.bucknell.edu',
+#             'tst008@acet116-lnx-11.bucknell.edu',
+#             'tst008@acet116-lnx-12.bucknell.edu',
+#             'tst008@acet116-lnx-13.bucknell.edu',
+#             'tst008@acet116-lnx-14.bucknell.edu',
+#             'tst008@acet116-lnx-15.bucknell.edu',
+#             'tst008@acet116-lnx-16.bucknell.edu',
+#             'tst008@acet116-lnx-17.bucknell.edu',
+#             'tst008@acet116-lnx-18.bucknell.edu',
+#             'tst008@acet116-lnx-19.bucknell.edu',
+#             'tst008@acet116-lnx-20.bucknell.edu',
+#             'tst008@acet116-lnx-21.bucknell.edu',
+        ],
+        "localhost": ['localhost']
+    },
+    "max_jobs": 1, # Num jobs per computer
+    "min_gpu": 500, # TODO: Only use computers with GPU used lower than min_gpu (mbs)
+}
+CONFIG["optimizer"] = {
+    "num_restarts": 10,  # ???
+    "raw_samples": 500,  # Sample on GP using Sobel sequence
+    "options": {
+        "batch_limit": 5,
+        "max_iter": 200,
+        "seed": 0
+    }
+}
+# Commands to run on target machines here
+CONFIG["commands"] = {
+         "acet": "module switch python/3.7-2020-05-28" + \
+                   " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
+                   " && python3 ~/PycharmProjects/summer/distributed_optimizer.py --run_as client",
     "localhost": "/opt/anaconda/envs/jupyter37/bin/python ~/summer/distributed_optimizer.py --run_as client --data_folder ~/summer/data/CroppedYale/"
 }
-# COMMAND = {
-#     "acet": "date",
-#     "localhost": "date"
-# }
+CONFIG["commands"] = {
+    "acet": "date",
+    "localhost": "date"
+}
 print("Using config: ", CONFIG)
 
 
-# Plug in the objective function
+# Plug in the objective function here
 class YaleFaceTrainer(Trainer):
     
     def __init__(self, 
@@ -79,10 +108,11 @@ class YaleFaceTrainer(Trainer):
         return mean, variance 
 
 
+# Runs on the host machine
 def start_optimizer():
     r"""Start the optimizer and listen to available trainers"""
     
-    def get_feasibility(X):
+    def get_feasibility(X) -> float:
         expected_input_shape = (1, 1, 192, 168)
         conv1_in = round(float(X[0]))
         conv1_kernel = round(float(X[1]))
@@ -164,6 +194,7 @@ def start_optimizer():
     )
     optimizer.run(host=None)
 
+# Runs on the host machine
 def start_trainers(num_trainers_active=2):
     r"""Connect to available machines and start trainers in parallel"""
     assert num_trainers_active <= len(CONFIG["distribute"]["computer_list"]), \
@@ -174,11 +205,12 @@ def start_trainers(num_trainers_active=2):
         for host in CONFIG["distribute"]["computer_list"][host_cat]:
             commands.append({
                 "category": host_cat, 
-                "command": COMMAND[host_cat]
+                "command": CONFIG["commands"][host_cat]
             })
     print("Starting trainers..")
-    processCommandsInParallel(commands)
+    processCommandsInParallel(commands, CONFIG["distribute"])
     
+# Calls start_optimizer and start_trainers simultaneously
 def main():
     # Machines to be connected to
     print("Machine names:")
@@ -215,15 +247,18 @@ if __name__ == "__main__":
                            default="~/PycharmProjects/summer/data/CroppedYale/")
     args = parser.parse_args()
     
+    # Can modify these code to accomodate more options
+    # E.g. Run different Trainers on same task
     if args.run_as == "host":
         main()
     elif args.run_as == "client":
+        # Runs on clients
         trainer = YaleFaceTrainer(args,
                                   host="jvs008-r1.bucknell.edu",
                                   port="15555")
 #         trainer = NegHartmannTrainer(host="jvs008-r1.bucknell.edu",
 #                                       port="15555")
-        trainer.run()
+#         trainer.run()
     
     
     

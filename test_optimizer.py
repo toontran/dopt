@@ -1,4 +1,4 @@
-from src.optimizers import NEIOptimizer
+from dopt import NEIOptimizer
 
 if __name__ == "__main__":
     bounds = {
