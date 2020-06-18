@@ -84,10 +84,12 @@ class JobDistributor(object):
         self.maxJobs = num
 
     def isFull(self):
-        return len(self) == len(self.processes)*self.maxJobs
+        num_processes = sum([sum([1 for g in i.values()]) for i in self.processes.values()])
+        return len(self) == num_processes*self.maxJobs
 
     def info(self):
-        return (len(self.processes), self.maxJobs*len(self.processes))
+        num_processes = sum([sum([1 for g in i.values()]) for i in self.processes.values()])
+        return (num_processes, self.maxJobs*num_processes)
 
     def distribute(self, command):
         procNum = self.totalJobs
@@ -128,7 +130,6 @@ class JobDistributor(object):
         print('Submited to ' + host + ': ' + command["command"])
         self.processes[command["category"]][host].append(Job(host, p, command["command"]))
         self.totalJobs += 1
-        print(self.processes[command["category"]][host][-1])
 
     def getHost(self, host_cat):
         """Find a host among the computer_list whose load is less than maxJobs."""
@@ -137,7 +138,6 @@ class JobDistributor(object):
         for host in self.processes[host_cat]:
             
             #clean out finished jobs. Keep only those which haven't terminated.
-            print([p for p in self.processes[host_cat][host]])
             self.processes[host_cat][host] = [p for p in self.processes[host_cat][host]
                                               if p.poll() is None]
             
@@ -180,7 +180,8 @@ class JobDistributor(object):
                     print(e)
                     print('cleanComputerList: host %s deemed unavailable, ignoring...' \
                           % (host))
-                    self.processes[host_cat].pop(host);
+                    self.processes[host_cat].pop(host)
+                    
     
 
 

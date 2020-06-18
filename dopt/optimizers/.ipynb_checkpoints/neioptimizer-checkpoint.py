@@ -246,7 +246,7 @@ class NEIOptimizer(Optimizer):
             except NanError as e:
                 print("The weird bug showed up. Using another candidate..")
                 self.seed = self.seed + 1
-                return self.generate_candidate(candidate, trainer_info)
+                return self.generate_candidate()
             
             print("Returning result...")
             candidate = {}

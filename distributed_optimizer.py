@@ -9,6 +9,7 @@ import torch
 from torch import nn
 import numpy as np
 
+import dopt
 from dopt import NEIOptimizer, Trainer, processCommandsInParallel
 from dopt.synthetic_trainers import NegHartmannTrainer
 from dopt.utils import get_output_shape
@@ -17,24 +18,23 @@ from test_objective_function import run_train_net_kfold # The objective function
 import warnings
 warnings.filterwarnings("ignore")
 
-
 # The configurations
 CONFIG = {}
 CONFIG["distribute"] = {
     "computer_list": {
         "acet": [
             'tst008@acet116-lnx-10.bucknell.edu',
-#             'tst008@acet116-lnx-11.bucknell.edu',
-#             'tst008@acet116-lnx-12.bucknell.edu',
-#             'tst008@acet116-lnx-13.bucknell.edu',
-#             'tst008@acet116-lnx-14.bucknell.edu',
-#             'tst008@acet116-lnx-15.bucknell.edu',
-#             'tst008@acet116-lnx-16.bucknell.edu',
-#             'tst008@acet116-lnx-17.bucknell.edu',
-#             'tst008@acet116-lnx-18.bucknell.edu',
-#             'tst008@acet116-lnx-19.bucknell.edu',
-#             'tst008@acet116-lnx-20.bucknell.edu',
-#             'tst008@acet116-lnx-21.bucknell.edu',
+            'tst008@acet116-lnx-11.bucknell.edu',
+            'tst008@acet116-lnx-12.bucknell.edu',
+            'tst008@acet116-lnx-13.bucknell.edu',
+            'tst008@acet116-lnx-14.bucknell.edu',
+            'tst008@acet116-lnx-15.bucknell.edu',
+            'tst008@acet116-lnx-16.bucknell.edu',
+            'tst008@acet116-lnx-17.bucknell.edu',
+            'tst008@acet116-lnx-18.bucknell.edu',
+            'tst008@acet116-lnx-19.bucknell.edu',
+            'tst008@acet116-lnx-20.bucknell.edu',
+            'tst008@acet116-lnx-21.bucknell.edu',
         ],
         "localhost": ['localhost']
     },
@@ -58,8 +58,8 @@ CONFIG["commands"] = {
     "localhost": "/opt/anaconda/envs/jupyter37/bin/python ~/summer/distributed_optimizer.py --run_as client --data_folder ~/summer/data/CroppedYale/"
 }
 CONFIG["commands"] = {
-    "acet": "date",
-    "localhost": "date"
+    "acet": "sleep 20",
+    "localhost": "sleep 20"
 }
 print("Using config: ", CONFIG)
 
