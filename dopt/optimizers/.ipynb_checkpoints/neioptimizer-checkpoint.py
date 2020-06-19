@@ -25,68 +25,6 @@ from botorch.acquisition.objective import ConstrainedMCObjective
 from dopt.optimizers.optimizer import Optimizer
 
 
-# TODO: Refactor
-class qNEIModified(qNoisyExpectedImprovement):
-    r"""A regular Noisy Expected Improvement, but with  """
-    def __init__(
-        self,
-        model: Model,
-        X_baseline: Tensor,
-        sampler: Optional[MCSampler] = None,
-        objective: Optional[MCAcquisitionObjective] = None,
-        X_pending: Optional[Tensor] = None,
-        prune_baseline: Optional[bool] = False,
-    ) -> None:
-        """q-Noisy Expected Improvement.
-
-        Args:
-            model: A fitted model.
-            X_baseline: A `batch_shape x r x d`-dim Tensor of `r` candidates
-                that have already been observed. These points are considered as
-                the potential best candidate.
-            sampler: The sampler used to draw base samples. Defaults to
-                `SobolQMCNormalSampler(num_samples=500, collapse_batch_dims=True)`.
-            objective: The MCAcquisitionObjective under which the samples are
-                evaluated. Defaults to `IdentityMCObjective()`.
-            X_pending: A `batch_shape x m x d`-dim Tensor of `m` candidates
-                that have points that have been submitted for function evaluation
-                but have not yet been evaluated. Concatenated into `X` upon
-                forward call. Copied and set to have no gradient.
-            prune_baseline: If True, remove points in `X_baseline` that are
-                highly unlikely to be the best point. This can significantly
-                improve performance and is generally recommended. In order to
-                customize pruning parameters, instead manually call
-                `botorch.acquisition.utils.prune_inferior_points` on `X_baseline`
-                before instantiating the acquisition function.
-        """
-        super().__init__(
-            model=model, X_baseline=X_baseline, sampler=sampler, objective=objective,
-            X_pending=X_pending, prune_baseline=prune_baseline
-        )
-        self.is_possible = lambda x: True if is_possible == None else is_possible(x) 
-        
-    def prune_impossible_candidates(self, X, result):
-        r"""TODO"""
-        num_hyperparams = X.shape[-1]
-        for i in range(len(result.view(-1, 1))):
-            if not self.is_possible(X.view(-1, num_hyperparams)[i]):
-                # If not possible, set the lowest score for the candidate
-                # TODO: Refactor!!
-                result.view(-1, 1)[i] = torch.tensor(float("-inf"), 
-                                                                   device=X.device)
-                print("N", end="")
-            else:
-                print("Passed!")
-        return result
-                
-    def forward(self, X: Tensor) -> Tensor:
-#         print("Forwarding..", end="")
-#         print(X, X.shape)
-#         print(self.X_baseline)
-        result = super().forward(X)
-        return result
-
-
 # Find mean and variance of Gaussian Process
 class NEIOptimizer(Optimizer):
     r"""A Bayesian Optimizer that uses Noisy Expected Improvement
@@ -94,7 +32,8 @@ class NEIOptimizer(Optimizer):
     
     Example:
         >>> bounds = TODO
-        >>> optimizer = NEIOptimizer(bounds, device="cuda:0")
+        >>> filename = TODO
+        >>> optimizer = NEIOptimizer(filename, bounds, device="cuda:0")
         >>> optimizer.run()
     """
     MC_SAMPLES = 500
@@ -107,7 +46,10 @@ class NEIOptimizer(Optimizer):
             device: Optional[str] = "cpu",
             seed: Optional[int] = random.randint(1, 100000),
             get_feasibility: Optional[Callable[[Tensor], float]] = None,
-            initial_candidate: Optional[Union[Dict[str, Any], None]] = None
+            initial_candidate: Optional[Union[
+                Dict[str, Any], # A single candidate to evaluate
+                List[Dict[str, Any]], # Multiple candidates to evaluate
+                None]] = None
         ) -> None:
         r"""Constructor for  Bayesian optimizer that use Noisy Expected Improvement
         as the acquisition function. 
@@ -122,11 +64,20 @@ class NEIOptimizer(Optimizer):
         self.device = device
         self.get_feasibility = lambda x: 0 if get_feasibility == None else get_feasibility(x)
         self.initial_candidate = initial_candidate
+        self.current_model = None
         
+    # TODO: Handle Trainer changing the candidate themselves (have Trainers send candidate also?)
     def handle_observation(self, 
                            trainer_index: int,
                            candidate: Dict[str, Any], 
                            trainer_info: Dict) -> None:
+        r"""Puts together information received into an observation.
+        
+        :param trainer_index: ID of the trainer the info comes from.
+        :param candidate:     Candidate being used.
+        :param trainer_info: The information the trainer gives: 
+                             the training results, running time, etc.
+        """
         candidate_tensor = torch.tensor(list(candidate.values()), 
                                         device=self.device)
         observation = {
@@ -141,7 +92,7 @@ class NEIOptimizer(Optimizer):
         self.pending_candidates[trainer_index] = None
         self._save_observation(observation)
         
-    def _generate_random_candidate(self) -> None:
+    def _generate_random_candidate(self) -> Dict[str, Any]:
         r"""Uniformly generate a candidate in the known boundaries"""
         candidate = {}
         for bound_key in self.bounds:
@@ -152,15 +103,15 @@ class NEIOptimizer(Optimizer):
         if self.get_feasibility(
             torch.tensor(list(candidate.values()), device=self.device)
         ) > 0:
+            # TODO: Generating random candidate may not result in a feasible one
+            #       or do so in great amount of time, need to put Warnings
             return self._generate_random_candidate() # Random until feasible
         print("Feasible!")
         return candidate
-                
-    def _initialize_model(self, state_dict: Optional[Dict] = None):
-        r""" TODO: Refactor variable naming - training_result
-
-        :param candidate: 
-        """
+    
+    def _get_observation_data(self) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        r"""Puts known observations into appropriate tensors
+        to be passed into the predictive model"""
         # Group candidates, objectives and variances from observations 
         train_x, train_obj, train_var, train_con = [], [], [], []
         for o in self.observations:
@@ -168,13 +119,21 @@ class NEIOptimizer(Optimizer):
             train_obj.append(o["result"][0])
             train_var.append(o["result"][1])
             train_con.append(o["feasibility"])
-        
         # Put into torch tensor 
-        # TODO: make a util function for turning dict -> torch.tensor
         train_x = torch.tensor(train_x, device=self.device, dtype=NEIOptimizer.DTYPE)
         train_obj = torch.tensor(train_obj, device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-1)
         train_var = torch.tensor(train_var, device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-1)
-        train_con = torch.tensor(train_con, device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-1)        
+        train_con = torch.tensor(train_con, device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-1)  
+        return train_x, train_obj, train_var, train_con
+                
+    def _initialize_model(self, state_dict: Optional[Dict] = None):
+        r""" Create the model that predicts values of candidate and 
+        load state dict (if available).
+
+        :param state_dict: State of the previous model (fitting model
+                           easier/faster when specified)
+        """
+        train_x, train_obj, train_var, train_con = self._get_observation_data()      
 
         # define models for objective and constraint
         model_obj = HeteroskedasticSingleTaskGP(train_x, train_obj, train_var).to(train_x)
@@ -184,32 +143,44 @@ class NEIOptimizer(Optimizer):
         # combine into a multi-output GP model
         model = ModelListGP(model_obj, model_con) 
         mll = SumMarginalLogLikelihood(model.likelihood, model)
-            
         # load state dict if it is passed
         if state_dict is not None:
             model.load_state_dict(state_dict)
+        else:
+            model.load_state_dict(self.current_model.state_dict())
         return mll, model
         
     def generate_candidate(self) \
             -> Dict[str, Any]:
-        if len(self.observations) == 0:
-            # Generate a random candidate to startup the optimizing process
+        r"""Draw the best candidate to evaluate based on known observations."""
+        
+        if len(self.observations) == 0 or self.initial_candidate != None:
+            # If no previous observation or if initial candidate(s) are specified (may be more than one)
+            # Then use initial candidate(s), If no initial candidate available, generate randomly.
             print("Generating initial candidate")
             if self.initial_candidate == None:
                 return self._generate_random_candidate()
-            elif self.get_feasibility(
-                torch.tensor(list(self.initial_candidate.values()), device=self.device)
+            elif isinstance(self.initial_candidate, list) and len(self.initial_candidate) > 0:
+                initial_candidate = self.initial_candidate.pop()
+            elif not self.initial_candidate:
+                self.initial_candidate = None
+                return self.generate_candidate()
+            else:
+                initial_candidate = self.initial_candidate
+            
+            if self.get_feasibility(
+                torch.tensor(list(initial_candidate.values()), device=self.device)
             ) > 0:
                 raise Exception("User initial candidate is not feasible!")
             else:
-                return self.initial_candidate
+                return initial_candidate
         else:
             print(f"Optimizer received \n{self.observations[-1]}")
             mll, model = self._initialize_model()
             fit_gpytorch_model(mll)
+            self.current_model = model
             qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=self.seed)
-            
-            print("Fitting...")
+
             # define a feasibility-weighted objective for optimization
             constrained_obj = ConstrainedMCObjective(
                 objective=lambda Z: Z[..., 0],
@@ -223,13 +194,12 @@ class NEIOptimizer(Optimizer):
                 objective=constrained_obj
             )
 
-            # Torch based bounds
+            # Turn dictionary bounds into torch bounds
             lower_bounds = [bound[0] for bound in self.bounds.values()]
             upper_bounds = [bound[1] for bound in self.bounds.values()]
             bounds_torch = torch.tensor([lower_bounds, upper_bounds], device=self.device, dtype=NEIOptimizer.DTYPE)
             
             # Try-except to handle a weird bug
-            print("Finding candidate")
             try:
                 torch_candidate, _ = optimize_acqf(
                     acq_function=qNEI,
@@ -248,7 +218,7 @@ class NEIOptimizer(Optimizer):
                 self.seed = self.seed + 1
                 return self.generate_candidate()
             
-            print("Returning result...")
+            # Put parameters together
             candidate = {}
             for i, key in enumerate(self.get_labels()):
                 candidate[key] = torch_candidate.cpu().numpy()[0][i]
