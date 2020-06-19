@@ -57,11 +57,10 @@ CONFIG["commands"] = {
                    " && python3 ~/PycharmProjects/summer/distributed_optimizer.py --run_as client",
     "localhost": "/opt/anaconda/envs/jupyter37/bin/python ~/summer/distributed_optimizer.py --run_as client --data_folder ~/summer/data/CroppedYale/"
 }
-CONFIG["commands"] = {
-    "acet": "sleep 20",
-    "localhost": "sleep 20"
-}
-print("Using config: ", CONFIG)
+# CONFIG["commands"] = {
+#     "acet": "sleep 20",
+#     "localhost": "sleep 20"
+# }
 
 
 # Plug in the objective function here
@@ -97,7 +96,7 @@ class YaleFaceTrainer(Trainer):
             seed=1, 
             batch_size=round(candidate["batch_size"]),
             test_batch_size=1000,
-            epochs=23,
+            epochs=1,
             lr=candidate["lr"],
             gamma=0.7,
             log_interval=250, # was 250
@@ -258,7 +257,7 @@ if __name__ == "__main__":
                                   port="15555")
 #         trainer = NegHartmannTrainer(host="jvs008-r1.bucknell.edu",
 #                                       port="15555")
-#         trainer.run()
+        trainer.run()
     
     
     

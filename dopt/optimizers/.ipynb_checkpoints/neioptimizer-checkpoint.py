@@ -86,7 +86,7 @@ class NEIOptimizer(Optimizer):
             "result": trainer_info["result"],
             "time_started": trainer_info["time_started"],
             "time_elapsed": trainer_info["time_elapsed"],
-            "feasibility": self.get_feasibility(candidate_tensor).item()
+            "feasibility": self.get_feasibility(candidate_tensor)
         }
         self.observations.append(observation)
         self.pending_candidates[trainer_index] = None
@@ -200,6 +200,7 @@ class NEIOptimizer(Optimizer):
             bounds_torch = torch.tensor([lower_bounds, upper_bounds], device=self.device, dtype=NEIOptimizer.DTYPE)
             
             # Try-except to handle a weird bug
+            count = 3
             try:
                 torch_candidate, _ = optimize_acqf(
                     acq_function=qNEI,
@@ -216,6 +217,9 @@ class NEIOptimizer(Optimizer):
             except NanError as e:
                 print("The weird bug showed up. Using another candidate..")
                 self.seed = self.seed + 1
+                count -= 1
+                if count <= 0:
+                    raise Exception("WEIRDD")
                 return self.generate_candidate()
             
             # Put parameters together
