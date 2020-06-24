@@ -124,7 +124,7 @@ class JobDistributor(object):
         #We'll build our own, for simplicity's sake.  That means
         #it is solely the responsibility of the caller to construct
         #the line as it should be run from the command line of the host.
-        p = subprocess.Popen(['ssh', host, command["command"]])
+        p = subprocess.Popen(['ssh', '-tt', host, command["command"]])
         
         #p = subprocess.Popen(shlex.split(command_line))
         print('Submited to ' + host + ': ' + command["command"])

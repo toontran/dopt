@@ -90,13 +90,9 @@ def processCommandsInParallel(commands, configs):
         pconn.send(json.dumps(command))
 
     #Don't quit until the submitMaster says it's done.
-    waitCycles = 0
     while True:
         pconn.send('dy')
         if pconn.recv() == 'yes':
             p.join()
             return
-        print('.'*waitCycles + "Still not done")
-        if waitCycles < 30:
-            waitCycles += 1
-        time.sleep(waitCycles)
+        time.sleep(1)
