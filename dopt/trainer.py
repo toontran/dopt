@@ -4,6 +4,8 @@ from typing import Dict, Any, Optional
 import json
 from datetime import datetime
 
+from dopt.utils import add_prefix_to_print
+
 
 class Trainer(ABC):
     r"""Representation of the objective function running on the target machine.
@@ -40,10 +42,16 @@ class Trainer(ABC):
             # Receive the candidate from Optimizer
             in_message: str = (await reader.read(1023)).decode("utf8")
             candidate: Dict = json.loads(in_message)
+            trainer_ip = candidate.pop("ip")
                 
             # Pass candidate to objective function and get result(s)
             start = datetime.now()
-            observation = self.get_observation(candidate)
+            try:
+                with add_prefix_to_print(trainer_ip):
+                    observation = self.get_observation(candidate)
+            except Exception as e:
+                print(f"Error!!")
+                raise e
             elapsed = datetime.now() - start
             
             # Send result back to optimizers
@@ -70,4 +78,3 @@ class Trainer(ABC):
         :return:
         """
         raise NotImplementedError
-        

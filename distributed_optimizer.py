@@ -22,20 +22,20 @@ warnings.filterwarnings("ignore")
 CONFIG = {}
 CONFIG["distribute"] = {
     "computer_list": {
-        "acet": [
-            'tst008@acet116-lnx-10.bucknell.edu',
-            'tst008@acet116-lnx-11.bucknell.edu',
-            'tst008@acet116-lnx-12.bucknell.edu',
-            'tst008@acet116-lnx-13.bucknell.edu',
-            'tst008@acet116-lnx-14.bucknell.edu',
-            'tst008@acet116-lnx-15.bucknell.edu',
-            'tst008@acet116-lnx-16.bucknell.edu',
-            'tst008@acet116-lnx-17.bucknell.edu',
-            'tst008@acet116-lnx-18.bucknell.edu',
-            'tst008@acet116-lnx-19.bucknell.edu',
-            'tst008@acet116-lnx-20.bucknell.edu',
-            'tst008@acet116-lnx-21.bucknell.edu',
-        ],
+#         "acet": [
+#             'tst008@acet116-lnx-10.bucknell.edu',
+#             'tst008@acet116-lnx-11.bucknell.edu',
+#             'tst008@acet116-lnx-12.bucknell.edu',
+#             'tst008@acet116-lnx-13.bucknell.edu',
+#             'tst008@acet116-lnx-14.bucknell.edu',
+#             'tst008@acet116-lnx-15.bucknell.edu',
+#             'tst008@acet116-lnx-16.bucknell.edu',
+#             'tst008@acet116-lnx-17.bucknell.edu',
+#             'tst008@acet116-lnx-18.bucknell.edu',
+#             'tst008@acet116-lnx-19.bucknell.edu',
+#             'tst008@acet116-lnx-20.bucknell.edu',
+#             'tst008@acet116-lnx-21.bucknell.edu',
+#         ],
         "localhost": ['localhost']
     },
     "max_jobs": 1, # Num jobs per computer
@@ -72,6 +72,46 @@ class YaleFaceTrainer(Trainer):
                  port: Optional[str] = "15555"):
         super().__init__(host=host, port=port)
         self.args = args
+        
+    def get_feasibility(self, candidate) -> float:
+        expected_input_shape = (1, 1, 192, 168)
+        conv1_in = round(candidate["conv1"])
+        conv1_kernel = round(candidate["conv1_kernel"])
+        conv2_in = round(candidate["conv2"])
+        conv2_kernel = round(candidate["conv2_kernel"])
+        maxpool1_in = round(candidate["maxpool1"])
+        maxpool2_in = round(candidate["maxpool2"])
+        # Reconstruct the layers for calculation
+        conv1 = nn.Conv2d(1, conv1_in, conv1_kernel, 1) 
+        conv2 = nn.Conv2d(conv1_in, conv2_in, conv2_kernel, 1)
+        maxpool1 = nn.MaxPool2d(maxpool1_in)
+        maxpool2 = nn.MaxPool2d(maxpool2_in)
+        
+        try:
+            conv1_out = get_output_shape(conv1, expected_input_shape)
+            maxpool1_out = get_output_shape(maxpool1, conv1_out)
+            conv2_out = get_output_shape(conv2, maxpool1_out)
+            maxpool2_out = get_output_shape(maxpool2, conv2_out)
+        except RuntimeError as e:
+            if "Output size is too small" in str(e):
+                return 2
+            else:
+                raise e
+        fc1_in = np.prod(list(maxpool2_out)) # Flatten
+        
+        feasibility = -0.1 # Default is 0, meaning feasible, >0 means not feasible
+        if conv1_out[-2] % maxpool1_in != 0 or \
+            conv1_out[-1] % maxpool1_in != 0:
+            feasibility += 1
+        if conv2_out[-2] % maxpool2_in != 0 or \
+            conv2_out[-1] % maxpool2_in != 0:
+            feasibility += 1
+        if conv1_in > conv2_in:
+            feasibility += 1
+        if fc1_in > 10**5:
+            feasibility += 1
+        print(f"Conv1: {get_output_shape(conv1, expected_input_shape)} % {maxpool1_in}, Conv2: {get_output_shape(conv2, maxpool1_out)} % {maxpool2_in}, Linear: {fc1_in}, Feasibility: {feasibility}")
+        return feasibility
     
     def get_observation(self, candidate: Dict[str, Any]) \
             -> Dict[str, Any]:
@@ -82,6 +122,11 @@ class YaleFaceTrainer(Trainer):
         :param candidate:
         :return:
         """
+        feasibility = self.get_feasibility(candidate)
+        if feasibility > 0:
+            print("Infeasible!")
+            return 0.1, 0.1, feasibility
+        
         # Simulate input
         input_args = Namespace(
             data_folder=self.args.data_folder,
@@ -104,45 +149,12 @@ class YaleFaceTrainer(Trainer):
             num_folds = 5
         )
         mean, variance = run_train_net_kfold(input_args)
-        return mean, variance 
+        return mean, variance, feasibility
 
 
 # Runs on the host machine
 def start_optimizer():
     r"""Start the optimizer and listen to available trainers"""
-    
-    def get_feasibility(X) -> float:
-        expected_input_shape = (1, 1, 192, 168)
-        conv1_in = round(float(X[0]))
-        conv1_kernel = round(float(X[1]))
-        conv2_in = round(float(X[2]))
-        conv2_kernel = round(float(X[3]))
-        maxpool1_in = round(float(X[5]))
-        maxpool2_in = round(float(X[6]))
-        # Reconstruct the layers for calculation
-        conv1 = nn.Conv2d(1, conv1_in, conv1_kernel, 1) 
-        conv2 = nn.Conv2d(conv1_in, conv2_in, conv2_kernel, 1)
-        maxpool1 = nn.MaxPool2d(maxpool1_in)
-        maxpool2 = nn.MaxPool2d(maxpool2_in)
-        conv1_out = get_output_shape(conv1, expected_input_shape)
-        maxpool1_out = get_output_shape(maxpool1, conv1_out)
-        conv2_out = get_output_shape(conv2, maxpool1_out)
-        maxpool2_out = get_output_shape(maxpool2, conv2_out)
-        fc1_in = np.prod(list(maxpool2_out)) # Flatten
-        
-        feasibility = 0 # Default is 0, meaning feasible, >0 means not feasible
-        if conv1_out[-2] % maxpool1_in != 0 or \
-            conv1_out[-1] % maxpool1_in != 0:
-            feasibility += 1
-        if conv2_out[-2] % maxpool2_in != 0 or \
-            conv2_out[-1] % maxpool2_in != 0:
-            feasibility += 1
-        if conv1_in > conv2_in:
-            feasibility += 1
-        if fc1_in > 10**5:
-            feasibility += 1
-        print(f"Conv1: {get_output_shape(conv1, expected_input_shape)} % {maxpool1_in}, Conv2: {get_output_shape(conv2, maxpool1_out)} % {maxpool2_in}, Linear: {fc1_in}, Feasibility: {feasibility}")
-        return feasibility
     
 #     def get_feasibility(X):
 #         # Is infeasible if > 0
@@ -172,32 +184,33 @@ def start_optimizer():
     # In case of huge infeasibility: If no previous observation or 
     # initial feasible candidate is found, random sampling is utilized,
     # making it hard to find a feasible sample. 
-    initial_candidate = { 
-        "conv1": 3,
-        "conv1_kernel": 3,
-        "conv2": 20,
-        "conv2_kernel": 3,
-        "dropout1": 0.5,
-        "maxpool1": 2,
-        "maxpool2": 3,
-        'batch_size': 10,
-        'lr': 0.01
-    }
-#     initial_candidate = None
+    # If already evaluated, skip it <-- 
+#     initial_candidate = { 
+#         "conv1": 3,
+#         "conv1_kernel": 3,
+#         "conv2": 20,
+#         "conv2_kernel": 3,
+#         "dropout1": 0.5,
+#         "maxpool1": 2,
+#         "maxpool2": 3,
+#         'batch_size': 10,
+#         'lr': 0.01
+#     }
+    initial_candidate = None
     
     optimizer = NEIOptimizer(
         "yaleface.json", bounds, 
-        device="cpu",  
-        get_feasibility=get_feasibility, 
-        initial_candidate=initial_candidate
+        device="cpu",
+        initial_candidate=initial_candidate,
+        seed=1
     )
     optimizer.run(host=None)
 
 # Runs on the host machine
 def start_trainers(num_trainers_active=2):
     r"""Connect to available machines and start trainers in parallel"""
-    assert num_trainers_active <= len(CONFIG["distribute"]["computer_list"]), \
-        "Numbers of trainers active at once cannot be greater than number of computers available!"
+#     assert num_trainers_active <= len(CONFIG["distribute"]["computer_list"]), \
+#         "Numbers of trainers active at once cannot be greater than number of computers available!"
 
     commands = []
     for host_cat in CONFIG["distribute"]["computer_list"]:

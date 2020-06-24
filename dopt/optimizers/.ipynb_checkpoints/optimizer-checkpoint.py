@@ -9,6 +9,8 @@ import random
 import torch
 import numpy as np
 
+from dopt.utils import generate_seed
+
 # TODO: Use logging instead of print
 # Multiple objective functions?
 # TODO: Deal with ordering problem
@@ -31,11 +33,12 @@ class Optimizer(ABC):
         :param bounds:    Boundaries to the search space
         """
         self.file_name = file_name
-        self.num_trainers = 0
+        self.trainers = []
         self.bounds = bounds
-        self.seed = seed
-        torch.manual_seed(seed)
-        np.random.seed(seed)
+        # Ensure reproducibility
+        random.seed(seed)
+        torch.manual_seed(generate_seed())
+        np.random.seed(generate_seed())
         # List of observed points:
         # [{"candidate":..., "result":...}, ...}]
         self.observations: List[Dict[str, Dict]] = []
@@ -120,42 +123,58 @@ class Optimizer(ABC):
         """
         print(f"Connected with Trainer at "
               f"{writer.get_extra_info('peername')}")
-        self.num_trainers += 1
+        
         
         # Add an empty slot to accomodate the pending candidate from the Trainer
-        trainer_index = self.num_trainers - 1
+        trainer_ip = writer.get_extra_info('peername')[0]
+        self.trainers.append(trainer_ip)
         self.pending_candidates.append(None) 
         
+        trainer_index = len(self.trainers) - 1
         trainer_info = None
         candidate = None
         while self.is_running():
             
             # Find one potential candidate to try next based on the info
             candidate: Dict[str, Any] = self.generate_candidate()
+            candidate["ip"] = trainer_ip
             
             # Send candidate to Trainer
             out_message = json.dumps(candidate)
             writer.write(out_message.encode("utf8"))
             await writer.drain()
+            
+            candidate.pop("ip") # We don't really need ip though..
             self.pending_candidates[trainer_index] = candidate
             
             # Receive info of the Trainer including training result(s)
-            in_message: str = (await reader.read(1023)).decode("utf8")
-            trainer_info: Dict = json.loads(in_message)
+            try:
+                in_message: str = (await reader.read(1023)).decode("utf8")
+                trainer_info: Dict = json.loads(in_message)
+            except ValueError:
+                print(f"Error in receiving info: {trainer_info}, shutting down connection with Trainer {trainer_ip}")
+                break
                 
-            self.handle_observation(trainer_index, candidate, trainer_info)
+            self.handle_info_received(trainer_ip, trainer_index, candidate, trainer_info)
             
-            
-        writer.close()
-        self.num_trainers -= 1
         print(f"Closing Trainer at {writer.get_extra_info('peername')}")
+        self.pending_candidates[trainer_index] = None
+        writer.close()
         
-    def handle_observation(self, 
+    def handle_info_received(self, 
+                           trainer_ip: str,
                            trainer_index: int,
                            candidate: Dict[str, Any], 
                            trainer_info: Dict) -> None:
+        r"""Puts together information received into an observation.
+        
+        :param trainer_index: ID of the trainer the info comes from.
+        :param candidate:     Candidate being used.
+        :param trainer_info: The information the trainer gives: 
+                             the training results, running time, etc.
+        """
         observation = {
-            "id": trainer_index,
+            "ip": trainer_ip,
             "candidate": candidate, 
             "result": trainer_info["result"],
             "time_started": trainer_info["time_started"],
