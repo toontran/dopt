@@ -179,7 +179,10 @@ class NEIOptimizer(Optimizer):
             if self.num_constraints > 0:
                 constraint_functions = []
                 for i in range(self.num_constraints):
-                    constraint_functions.append(lambda Z: Z[..., i+1])
+                    constraint_idx = i + 1
+                    print("Constraint index: ", constraint_idx)
+                    constraint_functions.append(lambda Z: Z[..., constraint_idx])
+                print(constraint_functions)
                 constrained_obj = ConstrainedMCObjective(
                     objective=lambda Z: Z[..., 0],
                     constraints=constraint_functions

@@ -22,7 +22,7 @@ warnings.filterwarnings("ignore")
 CONFIG = {}
 CONFIG["distribute"] = {
     "computer_list": {
-#         "acet": [
+        "acet": [
 #             'tst008@acet116-lnx-10.bucknell.edu',
 #             'tst008@acet116-lnx-11.bucknell.edu',
 #             'tst008@acet116-lnx-12.bucknell.edu',
@@ -32,11 +32,11 @@ CONFIG["distribute"] = {
 #             'tst008@acet116-lnx-16.bucknell.edu',
 #             'tst008@acet116-lnx-17.bucknell.edu',
 #             'tst008@acet116-lnx-18.bucknell.edu',
-#             'tst008@acet116-lnx-19.bucknell.edu',
+            'tst008@acet116-lnx-1.bucknell.edu',
 #             'tst008@acet116-lnx-20.bucknell.edu',
 #             'tst008@acet116-lnx-21.bucknell.edu',
-#         ],
-        "localhost": ['localhost']
+        ],
+        "localhost": ['tung@localhost']
     },
     "max_jobs": 1, # Num jobs per computer
     "min_gpu": 500, # TODO: Only use computers with GPU used lower than min_gpu (mbs)
@@ -51,16 +51,16 @@ CONFIG["optimizer"] = {
     }
 }
 # Commands to run on target machines here
-CONFIG["commands"] = {
-         "acet": "module switch python/3.7-2020-05-28" + \
-                   " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
-                   " && python3 ~/PycharmProjects/summer/distributed_optimizer.py --run_as client",
-    "localhost": "/opt/anaconda/envs/jupyter37/bin/python ~/summer/distributed_optimizer.py --run_as client --data_folder ~/summer/data/CroppedYale/"
-}
 # CONFIG["commands"] = {
-#     "acet": "sleep 20",
-#     "localhost": "sleep 20"
+#          "acet": "module switch python/3.7-2020-05-28" + \
+#                    " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
+#                    " && python3 ~/PycharmProjects/summer/distributed_optimizer.py --run_as client",
+#     "localhost": "/opt/anaconda/envs/jupyter37/bin/python ~/summer/distributed_optimizer.py --run_as client --data_folder ~/summer/data/CroppedYale/"
 # }
+CONFIG["commands"] = {
+    "acet": "sleep 20 && echo 'Hey'",
+    "localhost": "sleep 20 && echo 'Hey'"
+}
 
 
 # Plug in the objective function here
@@ -204,7 +204,7 @@ def start_optimizer():
         initial_candidate=initial_candidate,
         seed=1
     )
-    optimizer.run(host=None)
+    optimizer.run(host=None, port=15556)
 
 # Runs on the host machine
 def start_trainers(num_trainers_active=2):

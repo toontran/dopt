@@ -35,6 +35,7 @@ import json
 
 sys.path.append(".")
 from .listQueue import listQueue
+import paramiko
 # from dopt import CONFIG
 
 
@@ -55,7 +56,7 @@ class Job(object):
 
     def poll(self):
         #return None for testing
-        return self.proc.poll()
+        return self.proc.channel.exit_status_ready()
 
 class JobDistributor(object):
     #Some static members.  Replace the elements of 
@@ -113,7 +114,7 @@ class JobDistributor(object):
                 #submitMaster that calls this ensures there is
                 #availability.  This will hang if it was mistaken.
         #print('Starting command.')
-        command_line = 'ssh ' + host + ' ' + command["command"]
+#         command_line = 'ssh ' + host + ' ' + command["command"]
 
         #This implies that shlex is maybe splitting up the command too much
         #in the case of matlab -nodisplay -r ... it thinks the commands
@@ -124,11 +125,28 @@ class JobDistributor(object):
         #We'll build our own, for simplicity's sake.  That means
         #it is solely the responsibility of the caller to construct
         #the line as it should be run from the command line of the host.
-        p = subprocess.Popen(['ssh', '-tt', host, command["command"]])
+#         p = subprocess.Popen(['ssh', '-tt', host, command["command"]])
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        username, machine = host.split("@")
+        print(f"Connecting to {username}@{machine}")
+        client.connect(machine, username=username)
+        stdin, stdout, stderr = client.exec_command(command["command"])
+        
+        def line_buffered(f):
+            line_buf = ""
+            while not f.channel.exit_status_ready():
+                line_buf += f.read(1000).decode("utf8")
+                if line_buf.endswith('\n'):
+                    yield line_buf
+                    line_buf = ''
+                    
+        for l in line_buffered(stdout):
+            print(l)
         
         #p = subprocess.Popen(shlex.split(command_line))
         print('Submited to ' + host + ': ' + command["command"])
-        self.processes[command["category"]][host].append(Job(host, p, command["command"]))
+        self.processes[command["category"]][host].append(Job(host, stdout, command["command"]))
         self.totalJobs += 1
 
     def getHost(self, host_cat):
