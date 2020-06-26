@@ -125,24 +125,24 @@ class JobDistributor(object):
         #We'll build our own, for simplicity's sake.  That means
         #it is solely the responsibility of the caller to construct
         #the line as it should be run from the command line of the host.
-#         p = subprocess.Popen(['ssh', '-tt', host, command["command"]])
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        username, machine = host.split("@")
-        print(f"Connecting to {username}@{machine}")
-        client.connect(machine, username=username)
-        stdin, stdout, stderr = client.exec_command(command["command"])
+        p = subprocess.Popen(['ssh', host, command["command"]])
+#         client = paramiko.SSHClient()
+#         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+#         username, machine = host.split("@")
+#         print(f"Connecting to {username}@{machine}")
+#         client.connect(machine, username=username)
+#         stdin, stdout, stderr = client.exec_command(command["command"])
         
-        def line_buffered(f):
-            line_buf = ""
-            while not f.channel.exit_status_ready():
-                line_buf += f.read(1000).decode("utf8")
-                if line_buf.endswith('\n'):
-                    yield line_buf
-                    line_buf = ''
+#         def line_buffered(f):
+#             line_buf = ""
+#             while not f.channel.exit_status_ready():
+#                 line_buf += f.read(1000).decode("utf8")
+#                 if line_buf.endswith('\n'):
+#                     yield line_buf
+#                     line_buf = ''
                     
-        for l in line_buffered(stdout):
-            print(l)
+#         for l in line_buffered(stdout):
+#             print(l)
         
         #p = subprocess.Popen(shlex.split(command_line))
         print('Submited to ' + host + ': ' + command["command"])
