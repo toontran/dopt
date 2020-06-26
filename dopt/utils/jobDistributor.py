@@ -56,7 +56,7 @@ class Job(object):
 
     def poll(self):
         #return None for testing
-        return self.proc.channel.exit_status_ready()
+        return self.proc.poll()
 
 class JobDistributor(object):
     #Some static members.  Replace the elements of 
