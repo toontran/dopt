@@ -146,7 +146,7 @@ class JobDistributor(object):
         
         #p = subprocess.Popen(shlex.split(command_line))
         print('Submited to ' + host + ': ' + command["command"])
-        self.processes[command["category"]][host].append(Job(host, stdout, command["command"]))
+        self.processes[command["category"]][host].append(Job(host, p, command["command"]))
         self.totalJobs += 1
 
     def getHost(self, host_cat):
