@@ -49,12 +49,9 @@ def get_gpu_info():
             key, val = item.split(':')
             key, val = key.strip(), val.strip()
             if key in out_dict: # Already exists
-                if isinstance(out_dict[key], list):
-                    out_dict[key].append(val)
-                else:
-                    out_dict[key] = [out_dict[key], val]
+                out_dict[key].append(val)
             else:
-                out_dict[key] = val
+                out_dict[key] = [val]
         except:
             pass
     return out_dict
