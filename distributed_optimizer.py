@@ -43,6 +43,7 @@ CONFIG["commands"] = {
                    " && python3 ~/PycharmProjects/distributed-optimizer/distributed_optimizer.py --run_as trainer",
     "tung-torch": "/opt/anaconda/envs/jupyter37/bin/python ~/pj/dopt_v2/distributed_optimizer.py --run_as trainer --data_folder ~/pj/dopt_v2/data/CroppedYale/"
 }
+#
 # CONFIG["commands"] = {
 #     "acet": "sleep 20 && echo 'Hey'",
 #     "tung-torch": "sleep 20 && echo 'Hey'"
