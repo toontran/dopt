@@ -40,7 +40,7 @@ CONFIG["computer_list"] = {
 CONFIG["commands"] = {
          "acet": "module switch python/3.7-2020-05-28" + \
                    " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
-                   " && python3 ~/PycharmProjects/dopt_v2/distributed_optimizer.py --run_as trainer",
+                   " && python3 ~/PycharmProjects/distributed-optimizer/distributed_optimizer.py --run_as trainer",
     "tung-torch": "/opt/anaconda/envs/jupyter37/bin/python ~/pj/dopt_v2/distributed_optimizer.py --run_as trainer --data_folder ~/pj/dopt_v2/data/CroppedYale/"
 }
 # CONFIG["commands"] = {
