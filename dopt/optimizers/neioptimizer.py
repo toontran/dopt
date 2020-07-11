@@ -207,7 +207,7 @@ class NEIOptimizer(Optimizer):
 
     def pending_candidate_list_to_tensor(self):
         t = torch.tensor([list(c.values()) for c in self.pending_candidates], 
-                     device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-2)
+                     device=self.device, dtype=NEIOptimizer.DTYPE)
         if t.shape[-1] == 0:
             return None
         print("Pending shape:", t.shape)

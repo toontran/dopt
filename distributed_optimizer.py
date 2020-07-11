@@ -20,10 +20,10 @@ warnings.filterwarnings("ignore")
 # The configurations
 CONFIG = {}
 CONFIG["computer_list"] = {
-#     "acet": [
-#         'tst008@acet116-lnx-10.bucknell.edu',
-#         'tst008@acet116-lnx-11.bucknell.edu',
-#         'tst008@acet116-lnx-12.bucknell.edu',
+    "acet_update": ['tst008@acet116-lnx-10.bucknell.edu'], # To git pull
+    "acet": [
+        'tst008@acet116-lnx-11.bucknell.edu',
+        'tst008@acet116-lnx-12.bucknell.edu',
 #         'tst008@acet116-lnx-13.bucknell.edu',
 #         'tst008@acet116-lnx-14.bucknell.edu',
 #         'tst008@acet116-lnx-15.bucknell.edu',
@@ -33,12 +33,16 @@ CONFIG["computer_list"] = {
 #         'tst008@acet116-lnx-1.bucknell.edu',
 #         'tst008@acet116-lnx-20.bucknell.edu',
 #         'tst008@acet116-lnx-21.bucknell.edu',
-#     ],
-    "tung-torch": ['tung@jvs008-r1.bucknell.edu']
+    ],
+#     "tung-torch": ['tung@jvs008-r1.bucknell.edu']
 }
 # Commands to run on target machines here
 CONFIG["commands"] = {
-         "acet": "module switch python/3.7-2020-05-28" + \
+    "acet_update": "cd PycharmProjects/distributed-optimizer/ && git pull" + \
+                   " && module switch python/3.7-2020-05-28" + \
+                   " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
+                   " && python3 ~/PycharmProjects/distributed-optimizer/distributed_optimizer.py --run_as trainer",
+    "acet": "sleep 10 && module switch python/3.7-2020-05-28" + \
                    " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
                    " && python3 ~/PycharmProjects/distributed-optimizer/distributed_optimizer.py --run_as trainer",
     "tung-torch": "/opt/anaconda/envs/jupyter37/bin/python ~/pj/dopt_v2/distributed_optimizer.py --run_as trainer --data_folder ~/pj/dopt_v2/data/CroppedYale/"
@@ -53,7 +57,8 @@ CONFIG["server"] = {
     "port": 15555
 }
 CONFIG["trainer"] = {
-    "username": "tst008"
+    "username": "tst008",
+    "num_constraints": 1
 }
 CONFIG["optimizer"] = {
     "bounds": {
@@ -109,23 +114,17 @@ def get_feasibility(candidate) -> float:
     return feasibility
 
 # Plug in the objective function here
-def objective_function(data_folder, candidate):
+def objective_function(data_folder):    
     feasibility = get_feasibility(candidate)
     if feasibility > 0:
         print("Infeasible!")
         observation = {
-            "objective": [0.1, 0.1],
+            "objective": [0.001, 0.001],
             "constraints": [feasibility]
         }
         return observation
     print("Returning the observation")
-#     time.sleep(10)
-#     observation = {
-#             "objective": [0.1, 0.1],
-#             "constraints": [feasibility]
-#     }
-#     print("Observation prepared. Sending..")
-#     return observation
+    
     # Simulate input
     input_args = Namespace(
         data_folder=data_folder,
@@ -147,7 +146,6 @@ def objective_function(data_folder, candidate):
         save_model=False,
         num_folds = 5
     )
-    mean, variance = run_train_net_kfold(input_args)
 
     observation = {
         "objective": [mean, variance],
@@ -162,7 +160,6 @@ def start_server():
         CONFIG["optimizer"]["filename"], 
         CONFIG["optimizer"]["bounds"], 
         device=CONFIG["optimizer"]["device"],
-#         initial_candidate=CONFIG["initial_candidate"], PRIORITY <-------------
         seed=CONFIG["optimizer"]["seed"]
     )
     server = Server(optimizer, CONFIG, 
@@ -176,7 +173,8 @@ def start_trainers():
         of, 
         CONFIG["trainer"]["username"],
         CONFIG["server"]["host"],
-        CONFIG["server"]["port"]
+        CONFIG["server"]["port"],
+        num_constraints=CONFIG["trainer"]["num_constraints"]
     )
     trainer.run()
     
