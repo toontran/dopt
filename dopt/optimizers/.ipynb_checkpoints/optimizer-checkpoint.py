@@ -9,6 +9,8 @@ import random
 import torch
 import numpy as np
 
+from multiprocessing.connection import Connection
+
 from dopt.utils import generate_seed
 
 # TODO: Use logging instead of print
@@ -28,26 +30,36 @@ class Optimizer(ABC):
                  seed: Optional[int] = random.randint(1, 100000)) -> None:
         r""" Constructor for Optimizer base class.
         
-        :param file_name: Name of the file
-                          that stores observations
-        :param bounds:    Boundaries to the search space
+        :param file_name:   Name of the file
+                            that stores observations
+        :param bounds:      Boundaries to the search space
+        :param seed:        To ensure reproducibility
         """
         self.file_name = file_name
-        self.trainers = []
-        self.bounds = bounds
+        self.bounds = dict(sorted(bounds.items()))
+        
         # Ensure reproducibility
         random.seed(seed)
         torch.manual_seed(generate_seed())
         np.random.seed(generate_seed())
+        
         # List of observed points:
         # [{"candidate":..., "result":...}, ...}]
         self.observations: List[Dict[str, Dict]] = []
         self._load_observations()
+        
         # List of pending hyperparameters, length = number of Trainers
         # [{"num_batch":..., "num_iter":...}, ...]
         self.pending_candidates: List[Dict[str, Dict]] = []
-        # The server loop
-        self.loop = asyncio.get_event_loop()
+            
+        # Connection with server
+        self.server_conn = None
+        
+    def _set_server_connection(self, conn):
+        if self.server_conn == None:
+            self.server_conn = conn
+        else:
+            raise Exception("Connection with server already established")
             
     def is_running(self) -> bool:
         r"""Determine where the optimizer will stop. Override the
@@ -73,117 +85,55 @@ class Optimizer(ABC):
                 pass
     
     def _save_observation(self, observation):
-        r"""Save the acquired observation into a storing file"""
+        r"""Save ONE acquired observation into a storing file"""
         with open(self.file_name, "a") as f:
             f.write(json.dumps(observation, indent=None) + "\n")
             
-    def get_best_observation(self, scorer):
-        r"""Return highest score given by scorer, which
-        is a function that takes in the objective value and variance
+    def remove_pending_candidate(self, observation):
+        """Candidates from returning observations, successful or failed,
+        are to be removed from the pending_candidates list
         
-        :param scorer: A function that takes in the objective value and variance as input
-        :return:       The best observation according to the scorer
+        :param observation: A single observation
         """
-        highest_score = -math.inf
-        best_observation = None
-        for observation in observations:
-            obj_value, obj_var = observation["result"]
-            score = scorer(obj_value, obj_var)
-            if score > best_observation:
-                highest_score = score
-                best_observation = observation
-        return best_observation
+        candidate_to_remove = observation["candidate"]
+        self.pending_candidates = [candidate 
+                                   for candidate in self.pending_candidates
+                                   if candidate != candidate_to_remove]
 
-    def run(self, host="127.0.0.1", port="15555") -> None:
-        """ Runs server at specified host and port.
-
-        :param host: TODO
-        :param port:
-        """
-        asyncio.run(self._start_server(host, port))
-
-    async def _start_server(self, host, port) -> None:
-        server = await asyncio.start_server(self._handle_trainer,
-                                            host, port)
-        address = server.sockets[0].getsockname()
-        print(f'Serving on {address}')
-        async with server:
-            await server.serve_forever()
-        print("Done")
-
-    async def _handle_trainer(self, reader: asyncio.StreamReader,
-                              writer: asyncio.StreamWriter) -> None:
-        r"""Handle a single Trainer. Receive incoming candidate request
-        and send one potential candidate to the Trainer
-        
-        Inner working mechanism: TODO
-
-        :param reader: TODO
-        :param writer:
-        """
-        print(f"Connected with Trainer at "
-              f"{writer.get_extra_info('peername')}")
-        
-        
-        # Add an empty slot to accomodate the pending candidate from the Trainer
-        trainer_ip = writer.get_extra_info('peername')[0]
-        self.trainers.append(trainer_ip)
-        self.pending_candidates.append(None) 
-        
-        trainer_index = len(self.trainers) - 1
-        trainer_info = None
-        candidate = None
+    def run(self, conn) -> None:
+        """Optimization loop. 
+        Generate candidate to send to Server, then receive further
+        candidate(s) from Server, and then generate, and so
+        on."""
+        self._set_server_connection(conn)
         while self.is_running():
-            
-            # Find one potential candidate to try next based on the info
-            candidate: Dict[str, Any] = self.generate_candidate()
-            candidate["ip"] = trainer_ip
-            
-            # Send candidate to Trainer
-            out_message = json.dumps(candidate)
-            writer.write(out_message.encode("utf8"))
-            await writer.drain()
-            
-            candidate.pop("ip") # We don't really need ip though..
-            self.pending_candidates[trainer_index] = candidate
-            
-            # Receive info of the Trainer including training result(s)
             try:
-                in_message: str = (await reader.read(1023)).decode("utf8")
-                trainer_info: Dict = json.loads(in_message)
-            except ValueError:
-                print(f"Error in receiving info: {trainer_info}, shutting down connection with Trainer {trainer_ip}")
-                break
-                
-            self.handle_info_received(trainer_ip, trainer_index, candidate, trainer_info)
+                responses = self.server_conn.recv()
+                print("Optimizer received:", responses)
+            except EOFError:
+                # When the other end is closed
+                print("Exitting Optimizer")
+                return
             
-        print(f"Closing Trainer at {writer.get_extra_info('peername')}")
-        self.pending_candidates[trainer_index] = None
-        writer.close()
+            # Handle the server's response
+            for response in responses.split("\n")[:-1]:                
+                if response.strip() == "{}":
+                    continue
+                    
+                observation = json.loads(response)
+                if observation["contention_failure"] == False:
+                    self.observations.append(observation)
+                    self._save_observation(observation) 
+                self.remove_pending_candidate(observation) 
+                
+             # Find one potential candidate to try next based on the info
+            candidate: Dict[str, Any] = self.generate_candidate()
+            self.pending_candidates.append(candidate)
+            
+            reply = json.dumps({"candidate": candidate})
+            self.server_conn.send(reply)                
+            print("Optimizer sent:", reply)
         
-    def handle_info_received(self, 
-                           trainer_ip: str,
-                           trainer_index: int,
-                           candidate: Dict[str, Any], 
-                           trainer_info: Dict) -> None:
-        r"""Puts together information received into an observation.
-        
-        :param trainer_index: ID of the trainer the info comes from.
-        :param candidate:     Candidate being used.
-        :param trainer_info: The information the trainer gives: 
-                             the training results, running time, etc.
-        """
-        observation = {
-            "ip": trainer_ip,
-            "candidate": candidate, 
-            "result": trainer_info["result"],
-            "time_started": trainer_info["time_started"],
-            "time_elapsed": trainer_info["time_elapsed"]
-        }
-        self.observations.append(observation)
-        self.pending_candidates[trainer_index] = None
-        self._save_observation(observation)
-
     @abstractmethod
     def generate_candidate(self) \
             -> Dict[str, Any]:

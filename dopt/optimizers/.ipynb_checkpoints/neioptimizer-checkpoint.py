@@ -50,10 +50,6 @@ class NEIOptimizer(Optimizer):
             bounds: Dict[str, Tuple[float, float]],
             device: Optional[str] = "cpu",
             seed: Optional[int] = random.randint(1, 100000),
-            initial_candidate: Optional[Union[
-                Dict[str, Any], # A single candidate to evaluate
-                List[Dict[str, Any]], # Multiple candidates to evaluate
-                None]] = None
         ) -> None:
         r"""Constructor for  Bayesian optimizer that use Noisy Expected Improvement
         as the acquisition function. 
@@ -63,7 +59,6 @@ class NEIOptimizer(Optimizer):
         """
         super().__init__(file_name, bounds=bounds, seed=seed)
         self.device = device
-        self.initial_candidate = initial_candidate
         self.current_model = None
         self.num_constraints = None
         
@@ -79,32 +74,25 @@ class NEIOptimizer(Optimizer):
     
     def _get_observation_data(self) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         r"""Puts known observations into appropriate tensors
-        to be passed into the predictive model
-        
-        An observation will have at least 2 keys: "candidate" and "result"
-        "candidate" is the set of hyperparameters that was observed
-        "result" is a list with the following respective values:
-                mean, variance[, constraint 1, constraint 2, ...]
-                where the constraints are optional.
+        to be passed into the predictive model.
         """
-        num_constraints_received = len(self.observations[-1]["result"])-2
+        num_constraints_received = len(self.observations[-1]["constraints"])
         assert self.num_constraints == None or \
             num_constraints_received == self.num_constraints, \
                 f"Inapproriate number of constraints, {num_constraints_received}"\
                 f" constraint(s) returned, while {self.num_constraints} constraint(s) allowed"
         if self.num_constraints == None:
-            self.num_constraints = len(self.observations[-1]["result"]) - 2 # Minus the mean and variance slot
+            self.num_constraints = len(self.observations[-1]["constraints"])
             
         # Group candidates, objectives, variances and constraints from observations 
         train_x, train_obj, train_var= [], [], []
         train_cons = [[] for i in range(self.num_constraints)]
         for o in self.observations:
             train_x.append(list(o["candidate"].values()))
-            train_obj.append(o["result"][0])
-            train_var.append(o["result"][1])
-            
+            train_obj.append(o["objective"][0])
+            train_var.append(o["objective"][1])
             for i in range(self.num_constraints):
-                train_cons[i].append(o["result"][i+2])
+                train_cons[i].append(o["constraints"][i])
                 
         # Put into torch tensor 
         train_x = torch.tensor(train_x, device=self.device, dtype=NEIOptimizer.DTYPE)
@@ -143,90 +131,87 @@ class NEIOptimizer(Optimizer):
             model.load_state_dict(self.current_model.state_dict())
         return mll, model
         
-    def generate_candidate(self, is_random: bool = False) \
-            -> Dict[str, Any]:
+    def generate_candidate(self) -> Dict[str, Any]:
         r"""Draw the best candidate to evaluate based on known observations.
         
         :param is_random: Set to True if want to generate randomly
         """
         
-        if len(self.observations) == 0 or self.initial_candidate != None or is_random:
+        if len(self.observations) == 0:
             # If no previous observation or if initial candidate(s) are specified (may be more than one)
             # Then use initial candidate(s), If no initial candidate available, generate randomly.
             print("Generating initial candidate(s)")
-            
-            if self.initial_candidate == None:
-                return self._generate_random_candidate()
-            elif isinstance(self.initial_candidate, list) and len(self.initial_candidate) > 0:
-                initial_candidate = self.initial_candidate.pop()
-            elif not self.initial_candidate:
-                self.initial_candidate = None
-                return self.generate_candidate()
-            else:
-                initial_candidate = self.initial_candidate
-                self.initial_candidate = None
+            return self._generate_random_candidate()
 
-            return initial_candidate
-        else:
-            print(f"Optimizer received \n{self.observations[-1]}")
-            mll, model = self._initialize_model()
-            fit_gpytorch_model(mll)
-            self.current_model = model
-            qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=generate_seed())
+        print(f"Optimizer received \n{self.observations[-1]}")
+        mll, model = self._initialize_model()
+        fit_gpytorch_model(mll)
+        self.current_model = model
+        qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=generate_seed())
 
-            # define a feasibility-weighted objective for optimization
-            constrained_obj = None
-            if self.num_constraints > 0:
-                constraint_functions = []
-                for i in range(self.num_constraints):
-                    constraint_idx = i + 1
-                    print("Constraint index: ", constraint_idx)
-                    constraint_functions.append(lambda Z: Z[..., constraint_idx])
-                print(constraint_functions)
-                constrained_obj = ConstrainedMCObjective(
-                    objective=lambda Z: Z[..., 0],
-                    constraints=constraint_functions
-                )
-            self.qNEI = qNoisyExpectedImprovement(
-                model=model, 
-                X_baseline=torch.tensor([list(o["candidate"].values()) for o in self.observations],
-                                        device=self.device, dtype=NEIOptimizer.DTYPE),
-                sampler=qmc_sampler,
-                objective=constrained_obj
+        # define a feasibility-weighted objective for optimization
+        constrained_obj = None
+        if self.num_constraints > 0:
+            constraint_functions = []
+            for i in range(self.num_constraints):
+                constraint_idx = i + 1
+                print("Constraint index: ", constraint_idx)
+                constraint_functions.append(lambda Z: Z[..., constraint_idx])
+            constrained_obj = ConstrainedMCObjective(
+                objective=lambda Z: Z[..., 0],
+                constraints=constraint_functions
             )
+        self.qNEI = qNoisyExpectedImprovement(
+            model=model, 
+            X_baseline=self.observation_list_to_tensor("candidate"),
+            X_pending=self.pending_candidate_list_to_tensor(),
+            sampler=qmc_sampler,
+            objective=constrained_obj
+        )
 
-            # Turn dictionary bounds into torch bounds
-            lower_bounds = [bound[0] for bound in self.bounds.values()]
-            upper_bounds = [bound[1] for bound in self.bounds.values()]
-            bounds_torch = torch.tensor([lower_bounds, upper_bounds], device=self.device, dtype=NEIOptimizer.DTYPE)
-            
-            # Try-except to handle a weird bug
-            try:
-                torch_candidate, _ = optimize_acqf(
-                    acq_function=self.qNEI,
-                    bounds=bounds_torch,
-                    q=1,              # Generate only one candidate at a time
-                    num_restarts=10,  # ???
-                    raw_samples=500,  # Sample on GP using Sobel sequence
-                    options={
-                        "batch_limit": 5,
-                        "max_iter": 200,
-                        "seed": generate_seed()
-                    }
-                )  
-            except NanError as e:
-                raise Exception("NanError again. There's no way to solve it yet !!!")
-            
-            # Put parameters together
-            candidate = {}
-            for i, key in enumerate(self.get_labels()):
-                candidate[key] = torch_candidate.cpu().numpy()[0][i]
-                
-            print(f"Sending candidate: {candidate}\n"
-                  f"Number of observations: {len(self.observations)}, "
-                  f"Number of Trainers running: {len(self.trainers)}")
-                
-            return candidate
+        # Turn dictionary bounds into torch bounds
+        lower_bounds = [bound[0] for bound in self.bounds.values()]
+        upper_bounds = [bound[1] for bound in self.bounds.values()]
+        bounds_torch = torch.tensor([lower_bounds, upper_bounds], device=self.device, dtype=NEIOptimizer.DTYPE)
+
+        # Try-except to handle a weird bug
+        try:
+            torch_candidate, _ = optimize_acqf(
+                acq_function=self.qNEI,
+                bounds=bounds_torch,
+                q=1,              # Generate only one candidate at a time
+                num_restarts=10,  # ???
+                raw_samples=500,  # Sample on GP using Sobel sequence
+                options={
+                    "batch_limit": 5,
+                    "max_iter": 200,
+                    "seed": generate_seed()
+                }
+            )  
+        except NanError as e:
+            raise Exception("NanError again. There's no way to solve it yet !!!")
+
+        # Put parameters together
+        candidate = {}
+        for i, key in enumerate(self.get_labels()):
+            candidate[key] = torch_candidate.cpu().numpy()[0][i]
+
+        print(f"Sending candidate: {candidate}\n"
+              f"Number of observations: {len(self.observations)}")
+
+        return candidate
+        
+    def observation_list_to_tensor(self, key):
+        return torch.tensor([list(o[key].values()) for o in self.observations], 
+                     device=self.device, dtype=NEIOptimizer.DTYPE)
+
+    def pending_candidate_list_to_tensor(self):
+        t = torch.tensor([list(c.values()) for c in self.pending_candidates], 
+                     device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-2)
+        if t.shape[-1] == 0:
+            return None
+        print("Pending shape:", t.shape)
+        return t
                 
             
             
