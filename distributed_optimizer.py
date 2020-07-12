@@ -114,7 +114,7 @@ def get_feasibility(candidate) -> float:
     return feasibility
 
 # Plug in the objective function here
-def objective_function(data_folder):    
+def objective_function(data_folder, candidate):    
     feasibility = get_feasibility(candidate)
     if feasibility > 0:
         print("Infeasible!")
@@ -146,7 +146,7 @@ def objective_function(data_folder):
         save_model=False,
         num_folds = 5
     )
-
+    time.sleep(60)
     observation = {
         "objective": [mean, variance],
         "constraints": [feasibility]
