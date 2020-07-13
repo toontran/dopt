@@ -25,7 +25,9 @@ class Trainer:
                  num_constraints: int = 0):
         """
         
-        :param username: The username we're logging as on the target machine(s)
+        :param username: The username we're logging as on the target machine(s).
+        :param host: Host name or IP of the Server.
+        :param port: 
         """
         self.objective_function = objective_function
         self.num_constraints = num_constraints
