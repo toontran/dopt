@@ -81,6 +81,8 @@ def get_feasibility(candidate) -> float:
     return -(x1 - x2 + 1.5)
     
 def objective_function_torch_input(X):
+    BASE_VAR = 0.1
+    
     X = -X.view(-1, 2)
     mask_constraint = X[...,0] - X[...,1] + 1.5 > 0
     cos_x = torch.cos(X[...,0])
