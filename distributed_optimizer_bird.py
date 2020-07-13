@@ -116,7 +116,7 @@ def objective_function(candidate):
     Y, Yvar, _ = objective_function_torch_input(X)
     mean, variance = Y.item(), Yvar.item()
     
-    time.sleep(random.randint(50, 90))
+    time.sleep(random.randint(20, 50))
     observation = {
         "objective": [mean, variance],
         "constraints": [feasibility]

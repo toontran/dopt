@@ -165,14 +165,16 @@ class Trainer:
                     mean, variance = 0.001, 0.001
                     observation = {
                         "objective": [mean, variance],
-                        "constraints": [-1.1] + [0] * self.num_constraints
+                        "constraints": [1.1] + [0] * self.num_constraints
                     }
                 else:
                     raise e
                 
             # Add GPU memory constraints
             with self.lock_max_gpu_usage:
-                observation['constraints'] = [self.max_gpu_usage.value] + observation["constraints"]
+                observation['constraints'] = \
+                        [self.max_gpu_usage.value - MAXIMUM_ALLOWED_GPU_PERCENTAGE] + \
+                        observation["constraints"]
                 self.max_gpu_usage.value = 0
             
             # Add candidate into observation as well
