@@ -24,34 +24,35 @@ CONFIG["computer_list"] = {
     "acet": [
         'tst008@acet116-lnx-11.bucknell.edu',
         'tst008@acet116-lnx-12.bucknell.edu',
-#         'tst008@acet116-lnx-13.bucknell.edu',
-#         'tst008@acet116-lnx-14.bucknell.edu',
-#         'tst008@acet116-lnx-15.bucknell.edu',
-#         'tst008@acet116-lnx-16.bucknell.edu',
-#         'tst008@acet116-lnx-17.bucknell.edu',
-#         'tst008@acet116-lnx-18.bucknell.edu',
-#         'tst008@acet116-lnx-1.bucknell.edu',
-#         'tst008@acet116-lnx-20.bucknell.edu',
-#         'tst008@acet116-lnx-21.bucknell.edu',
+        'tst008@acet116-lnx-13.bucknell.edu',
+        'tst008@acet116-lnx-14.bucknell.edu',
+        'tst008@acet116-lnx-15.bucknell.edu',
+        'tst008@acet116-lnx-16.bucknell.edu',
+        'tst008@acet116-lnx-17.bucknell.edu',
+        'tst008@acet116-lnx-18.bucknell.edu',
+        'tst008@acet116-lnx-1.bucknell.edu',
+        'tst008@acet116-lnx-20.bucknell.edu',
+        'tst008@acet116-lnx-21.bucknell.edu',
     ],
 #     "tung-torch": ['tung@jvs008-r1.bucknell.edu']
 }
 # Commands to run on target machines here
-CONFIG["commands"] = {
-    "acet_update": "cd PycharmProjects/distributed-optimizer/ && git pull" + \
-                   " && module switch python/3.7-2020-05-28" + \
-                   " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
-                   " && python3 ~/PycharmProjects/distributed-optimizer/distributed_optimizer.py --run_as trainer",
-    "acet": "sleep 10 && module switch python/3.7-2020-05-28" + \
-                   " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
-                   " && python3 ~/PycharmProjects/distributed-optimizer/distributed_optimizer.py --run_as trainer",
-    "tung-torch": "/opt/anaconda/envs/jupyter37/bin/python ~/pj/dopt_v2/distributed_optimizer.py --run_as trainer --data_folder ~/pj/dopt_v2/data/CroppedYale/"
-}
-#
 # CONFIG["commands"] = {
-#     "acet": "sleep 20 && echo 'Hey'",
-#     "tung-torch": "sleep 20 && echo 'Hey'"
+#     "acet_update": "cd PycharmProjects/distributed-optimizer/ && git pull" + \
+#                    " && module switch python/3.7-2020-05-28" + \
+#                    " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
+#                    " && python3 ~/PycharmProjects/distributed-optimizer/distributed_optimizer.py --run_as trainer",
+#     "acet": "sleep 10 && module switch python/3.7-2020-05-28" + \
+#                    " && export LD_LIBRARY_PATH=/usr/remote/lib:/usr/remote/anaconda-3.7-2020-05-28/lib" + \
+#                    " && python3 ~/PycharmProjects/distributed-optimizer/distributed_optimizer.py --run_as trainer",
+#     "tung-torch": "/opt/anaconda/envs/jupyter37/bin/python ~/pj/dopt_v2/distributed_optimizer.py --run_as trainer --data_folder ~/pj/dopt_v2/data/CroppedYale/"
 # }
+
+CONFIG["commands"] = {
+    "acet_update": "sleep 20 && pkill -9 python && echo 'Hey'",
+    "acet": "sleep 20 && pkill -9 python && echo 'Hey'",
+    "tung-torch": "sleep 20 && pkill -9 python && echo 'Hey'"
+}
 CONFIG["server"] = {
     "host": "jvs008-r1.bucknell.edu",
     "port": 15555

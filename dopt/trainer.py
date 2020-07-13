@@ -2,6 +2,7 @@ import time
 import os, sys
 import json
 from typing import Callable, Dict, Tuple, Union
+from datetime import datetime
 
 import socket
 from multiprocessing import Process, Pipe, Value
@@ -156,6 +157,7 @@ class Trainer:
             except Exception as e:
                 print(e)
             # with redirect_print():
+            start = datetime.now()
             try:
                 print("Evaluating objective function")
                 observation = self.objective_function(candidate)
@@ -169,6 +171,7 @@ class Trainer:
                     }
                 else:
                     raise e
+            elapsed = datetime.now() - start
                 
             # Add GPU memory constraints
             with self.lock_max_gpu_usage:
@@ -176,6 +179,9 @@ class Trainer:
                         [self.max_gpu_usage.value - MAXIMUM_ALLOWED_GPU_PERCENTAGE] + \
                         observation["constraints"]
                 self.max_gpu_usage.value = 0
+                
+            observation["time_started"] = start.strftime("%m/%d/%Y-%H:%M:%S")
+            observation["time_elapsed"] = round(elapsed.seconds/3600, 2) # In hours, rounded to 2nd decimal
             
             # Add candidate into observation as well
             observation.update({"candidate": candidate})
