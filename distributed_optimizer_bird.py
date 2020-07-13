@@ -111,7 +111,7 @@ def objective_function(candidate):
     
     # Simulate input
     X = torch.tensor([candidate["x1"], candidate["x2"]], dtype=float)
-    Y, Yvar, _ = torch.tensor(X)
+    Y, Yvar, _ = objective_function_torch_input(X)
     mean, variance = Y.item(), Yvar.item()
     
     time.sleep(random.randint(50, 90))
