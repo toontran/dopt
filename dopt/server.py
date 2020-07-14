@@ -31,6 +31,7 @@ class Server:
         self.trainer_queue = Queue()
         self.initial_candidates = initial_candidates \
                         if isinstance(initial_candidates, list) else []
+        self.verbose = verbose
         # Locks for multiprocess or multithreaded access to resource
         self.lock_trainers = Lock()
         self.lock_trainer_queue = Lock()
@@ -191,7 +192,7 @@ class Server:
         responses = responses.decode("utf8")
         
         for response in responses.split("\n")[:-1]:  
-            if verbose:
+            if self.verbose:
                 print("Loading response: ", response)
             response = json.loads(response)
             if "observation" in response:
