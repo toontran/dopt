@@ -95,6 +95,8 @@ class Server:
         """Send a candidate safely to a Trainer on the queue"""
         with self.lock_trainer_queue:
             trainer_id = self.trainer_queue.get()
+        if trainer_id not in self.trainers:
+            return
         connection, address, _ = self.trainers[trainer_id]
         try:
             connection.sendall(str.encode(
@@ -121,7 +123,6 @@ class Server:
     def listen_trainers(self):
         """Runs on another Process. Spawns threads to handle communication
         with Trainers."""
-        socket.setdefaulttimeout(10)
         server = socket.socket()
         host = '0.0.0.0'
         port = self.config["server"]["port"]
