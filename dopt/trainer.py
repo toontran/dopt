@@ -8,6 +8,8 @@ import socket
 from multiprocessing import Process, Pipe, Value
 from threading import Lock
 
+import torch
+
 from dopt.utils import get_all_gpu_processes_info
 
 
@@ -120,12 +122,10 @@ class Trainer:
                             sv_reply["observation"]["contention_failure"] = True
                         else:
                             sv_reply["observation"]["contention_failure"] = False
-                    self._send_dict_to_server(sv_conn, {"logging": "Go"})
                     self._send_dict_to_server(sv_conn, {"logging": "Server reply " + str(sv_reply)})
                     self._send_dict_to_server(sv_conn, sv_reply)
             
             # Interval of communication
-            # CAN'T SLEEP FOR SOME REASONS. WILL GET STUCK.
             time.sleep(SERVER_TRAINER_MESSAGE_INTERVAL)
         p.kill()
         

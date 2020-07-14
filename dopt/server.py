@@ -20,6 +20,7 @@ class Server:
                  optimizer: Optimizer,
                  config: Dict,
                  initial_candidates: Union[None, List[Dict]] = None,
+                 verbose: Union[True, False] = True
         ) -> None:
         """Need docs on the config"""
         self.optimizer = optimizer
@@ -189,8 +190,9 @@ class Server:
         """
         responses = responses.decode("utf8")
         
-        for response in responses.split("\n")[:-1]:      
-            print("Loading response: ", response)
+        for response in responses.split("\n")[:-1]:  
+            if verbose:
+                print("Loading response: ", response)
             response = json.loads(response)
             if "observation" in response:
                 print("Observation found")

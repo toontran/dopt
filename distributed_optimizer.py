@@ -12,7 +12,7 @@ import numpy as np
 import dopt
 from dopt import NEIOptimizer, Trainer, Server
 from dopt.utils import get_output_shape
-from test_objective_function import run_train_net_kfold # The objective function
+from camus_objective import run_kfolds # The objective function
 
 import warnings
 warnings.filterwarnings("ignore")
