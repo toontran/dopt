@@ -2,9 +2,10 @@ import time
 import os, sys
 import json
 from typing import Callable, Dict, Tuple, Union
+from datetime import datetime
 
 import socket
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Pipe, Value
 from threading import Lock
 
 from dopt.utils import get_all_gpu_processes_info
@@ -21,12 +22,16 @@ class Trainer:
                  objective_function: Callable[[Dict], Tuple],
                  username: str,
                  host: str,
-                 port: Union[int, str]):
+                 port: Union[int, str],
+                 num_constraints: int = 0):
         """
         
-        :param username: The username we're logging as on the target machine(s)
+        :param username: The username we're logging as on the target machine(s).
+        :param host: Host name or IP of the Server.
+        :param port: 
         """
         self.objective_function = objective_function
+        self.num_constraints = num_constraints
         self.username = username
         try:
             self.host = socket.gethostbyname(host)
@@ -34,36 +39,36 @@ class Trainer:
         except Exception as e:
             print("Invalid (host, port)!")
             print(e)
-        self.max_gpu_usage = 0
+        self.max_gpu_usage = Value('d', 0.0)
         self.is_running = True
-        self.a_lock = Lock()
+        self.lock_max_gpu_usage = Lock()
         
     def run(self):
         """Spawns 1 child Process, to evaluate objective function
         when receive a candidate. """        
-        trainer = socket.socket()
+        sv_conn = socket.socket()
         print('Waiting for connections from', self.host, ":", self.port)
         try:
-            trainer.connect((self.host, self.port))
+            sv_conn.connect((self.host, self.port))
         except Exception as e:
             print("Can't connect!", str(e))
             sys.exit(0)
             
-        trainer.setblocking(False) # Do not wait to recv()
+        sv_conn.setblocking(False) # Do not wait to recv()
 
         # Request the first candidate. Ready to work
         initial_message = {
             "observation": {},
             "gpu_info": get_all_gpu_processes_info()
         }
-        self._send_dict_to_server(trainer, initial_message)
+        self._send_dict_to_server(sv_conn, initial_message)
         
         # Evaluate Objective Function in a separate Process
         # Parent process sends candidates
         # Child process sends observation and print statements
         pconn, cconn = Pipe()
         objective_function_process = Process(target=self.evaluate_objective_function, \
-                        args=(cconn,trainer,))
+                        args=(cconn,))
         objective_function_process.start()
         
         while self.is_running:
@@ -73,12 +78,12 @@ class Trainer:
             sv_reply = {
                 "gpu_info": get_all_gpu_processes_info()
             }
-            self._send_dict_to_server(trainer, sv_reply)
+            self._send_dict_to_server(sv_conn, sv_reply)
             
-            self._send_dict_to_server(trainer, {"logging": "Handling"})
+            self._send_dict_to_server(sv_conn, {"logging": "Handling"})
             try:
                 # Handle response from Server
-                sv_responses = trainer.recv(NUM_BYTES_RECEIVE).decode("utf8")
+                sv_responses = sv_conn.recv(NUM_BYTES_RECEIVE).decode("utf8")
                 for response in sv_responses.split('\n')[:-1]:
                     response = json.loads(response)
                     if "candidate" in response:
@@ -93,12 +98,12 @@ class Trainer:
                     self.is_running = False
             
             # Check for messages from objective function process
-            self._send_dict_to_server(trainer, {"logging": "Checking"})
+            self._send_dict_to_server(sv_conn, {"logging": "Checking"})
             if pconn.poll():
                 obj_func_responses = pconn.recv()
                 for response in obj_func_responses.split("\n")[:-1]:
                     response = json.loads(response)
-                    self._send_dict_to_server(trainer, {"logging": "Objective func Response: " + str(response)})
+                    self._send_dict_to_server(sv_conn, {"logging": "Objective func Response: " + str(response)})
                     
                     # Handle response from objective function process
                     # and relay message to the Server
@@ -106,26 +111,27 @@ class Trainer:
                     if "logging" in response:
                         sv_reply["logging"] = response["logging"]
                     if "objective" in response:
-                        self._send_dict_to_server(trainer, {"logging": "Observation.. "})
+                        self._send_dict_to_server(sv_conn, {"logging": "Observation.. "})
                         sv_reply["observation"] = response
+                        with self.lock_max_gpu_usage:
+                            max_gpu_usage = self.max_gpu_usage.value 
                         if response["constraints"][0] > 0 and \
-                                self.max_gpu_usage < MAXIMUM_ALLOWED_GPU_PERCENTAGE:
+                                max_gpu_usage < MAXIMUM_ALLOWED_GPU_PERCENTAGE:
                             sv_reply["observation"]["contention_failure"] = True
                         else:
                             sv_reply["observation"]["contention_failure"] = False
-                    self._send_dict_to_server(trainer, {"logging": "Go"})
-                    self._send_dict_to_server(trainer, {"logging": "Server reply " + str(sv_reply)})
-                    self._send_dict_to_server(trainer, sv_reply)
+                    self._send_dict_to_server(sv_conn, {"logging": "Go"})
+                    self._send_dict_to_server(sv_conn, {"logging": "Server reply " + str(sv_reply)})
+                    self._send_dict_to_server(sv_conn, sv_reply)
             
             # Interval of communication
             # CAN'T SLEEP FOR SOME REASONS. WILL GET STUCK.
             time.sleep(SERVER_TRAINER_MESSAGE_INTERVAL)
         p.kill()
         
-    def _send_dict_to_server(self, trainer, d):
+    def _send_dict_to_server(self, sv_conn, d):
         try:
-            with self.a_lock:
-                trainer.sendall(str.encode(json.dumps(d) + "\n"))
+            sv_conn.sendall(str.encode(json.dumps(d) + "\n"))
         except:
             print("Stopping...")
             print(e)
@@ -140,10 +146,10 @@ class Trainer:
             if gpu_info[key]["user"] == self.username:
                 using_gpu_mem += gpu_info[key]["gpu_used"]
         gpu_usage = using_gpu_mem / total_gpu_mem
-        if gpu_usage > self.max_gpu_usage:
-            self.max_gpu_usage = gpu_usage
+        if gpu_usage > self.max_gpu_usage.value:
+            self.max_gpu_usage.value = gpu_usage
         
-    def evaluate_objective_function(self, cconn, trainer):
+    def evaluate_objective_function(self, cconn):
         while True:            
             try:
                 candidate = cconn.recv()
@@ -151,14 +157,33 @@ class Trainer:
             except Exception as e:
                 print(e)
             # with redirect_print():
+            start = datetime.now()
             try:
                 print("Evaluating objective function")
                 observation = self.objective_function(candidate)
             except Exception as e:
-                print(e)
-                print("ERROR")
+                if 'CUDA out of memory' in str(e):
+                    torch.cuda.empty_cache()
+                    mean, variance = 0.001, 0.001
+                    observation = {
+                        "objective": [mean, variance],
+                        "constraints": [1.1] + [0] * self.num_constraints
+                    }
+                else:
+                    raise e
+            elapsed = datetime.now() - start
+                
+            # Add GPU memory constraints
+            with self.lock_max_gpu_usage:
+                observation['constraints'] = \
+                        [self.max_gpu_usage.value - MAXIMUM_ALLOWED_GPU_PERCENTAGE] + \
+                        observation["constraints"]
+                self.max_gpu_usage.value = 0
+                
+            observation["time_started"] = start.strftime("%m/%d/%Y-%H:%M:%S")
+            observation["time_elapsed"] = round(elapsed.seconds/3600, 2) # In hours, rounded to 2nd decimal
+            
             # Add candidate into observation as well
             observation.update({"candidate": candidate})
-            self._send_dict_to_server(trainer, {"logging": "Obs: "+str(observation)})
             cconn.send(json.dumps(observation) + "\n")
 

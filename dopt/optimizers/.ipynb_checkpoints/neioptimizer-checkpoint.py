@@ -129,7 +129,32 @@ class NEIOptimizer(Optimizer):
             model.load_state_dict(state_dict)
         elif self.current_model is not None:
             model.load_state_dict(self.current_model.state_dict())
+            
+        self.current_model = model
         return mll, model
+    
+    def _initialize_acqf(self):
+        qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=generate_seed())
+
+        # define a feasibility-weighted objective for optimization
+        constrained_obj = None
+        if self.num_constraints > 0:
+            constraint_functions = []
+            for i in range(self.num_constraints):
+                constraint_idx = i + 1
+                print("Constraint index: ", constraint_idx)
+                constraint_functions.append(lambda Z: Z[..., constraint_idx])
+            constrained_obj = ConstrainedMCObjective(
+                objective=lambda Z: Z[..., 0],
+                constraints=constraint_functions
+            )
+        self.qNEI = qNoisyExpectedImprovement(
+            model=self.current_model, 
+            X_baseline=self.observation_list_to_tensor("candidate"),
+            X_pending=self.pending_candidate_list_to_tensor(),
+            sampler=qmc_sampler,
+            objective=constrained_obj
+        )
         
     def generate_candidate(self) -> Dict[str, Any]:
         r"""Draw the best candidate to evaluate based on known observations.
@@ -146,28 +171,7 @@ class NEIOptimizer(Optimizer):
         print(f"Optimizer received \n{self.observations[-1]}")
         mll, model = self._initialize_model()
         fit_gpytorch_model(mll)
-        self.current_model = model
-        qmc_sampler = SobolQMCNormalSampler(num_samples=NEIOptimizer.MC_SAMPLES, seed=generate_seed())
-
-        # define a feasibility-weighted objective for optimization
-        constrained_obj = None
-        if self.num_constraints > 0:
-            constraint_functions = []
-            for i in range(self.num_constraints):
-                constraint_idx = i + 1
-                print("Constraint index: ", constraint_idx)
-                constraint_functions.append(lambda Z: Z[..., constraint_idx])
-            constrained_obj = ConstrainedMCObjective(
-                objective=lambda Z: Z[..., 0],
-                constraints=constraint_functions
-            )
-        self.qNEI = qNoisyExpectedImprovement(
-            model=model, 
-            X_baseline=self.observation_list_to_tensor("candidate"),
-            X_pending=self.pending_candidate_list_to_tensor(),
-            sampler=qmc_sampler,
-            objective=constrained_obj
-        )
+        self._initialize_acqf()
 
         # Turn dictionary bounds into torch bounds
         lower_bounds = [bound[0] for bound in self.bounds.values()]
@@ -207,7 +211,7 @@ class NEIOptimizer(Optimizer):
 
     def pending_candidate_list_to_tensor(self):
         t = torch.tensor([list(c.values()) for c in self.pending_candidates], 
-                     device=self.device, dtype=NEIOptimizer.DTYPE).unsqueeze(-2)
+                     device=self.device, dtype=NEIOptimizer.DTYPE)
         if t.shape[-1] == 0:
             return None
         print("Pending shape:", t.shape)

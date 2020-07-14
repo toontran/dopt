@@ -60,7 +60,10 @@ class Server:
             p.start()
         
         while True:
-            print("Checking Queue")
+            with self.lock_trainers:
+                print("Number of Trainers running:", len(self.trainers))
+            with self.lock_trainer_queue:
+                print("Number of Trainers in the Queue:", self.trainer_queue.qsize())
             if not self.trainer_queue.empty():
                 print("A Trainer is ready")
                 
@@ -118,6 +121,7 @@ class Server:
     def listen_trainers(self):
         """Runs on another Process. Spawns threads to handle communication
         with Trainers."""
+        socket.setdefaulttimeout(10)
         server = socket.socket()
         host = '0.0.0.0'
         port = self.config["server"]["port"]
@@ -153,7 +157,7 @@ class Server:
                 break
 
             # Handle message received
-            reply = self._handle_client_response(responses, trainer_id)
+            reply = self._handle_client_response(responses, trainer_id, address)
 
             # Reply back to trainers
             try:
@@ -168,7 +172,7 @@ class Server:
         with self.lock_trainers:
             self.trainers.pop(trainer_id)
 
-    def _handle_client_response(self, responses, trainer_id):
+    def _handle_client_response(self, responses, trainer_id, address):
         """Handles the response from the Trainers
         
         :param response: Client response contains a dictionary with 
@@ -194,7 +198,7 @@ class Server:
                 with self.lock_trainer_queue:
                     self.trainer_queue.put(trainer_id)
             if "logging" in response:
-                print(response["logging"]) # For now
+                print(f'[{address}]:{response["logging"]}') # For now
             if "gpu_info" in response:
                 with self.lock_trainers:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now

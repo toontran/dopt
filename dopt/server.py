@@ -121,6 +121,7 @@ class Server:
     def listen_trainers(self):
         """Runs on another Process. Spawns threads to handle communication
         with Trainers."""
+        socket.setdefaulttimeout(10)
         server = socket.socket()
         host = '0.0.0.0'
         port = self.config["server"]["port"]
