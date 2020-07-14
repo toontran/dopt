@@ -25,7 +25,8 @@ class Trainer:
                  username: str,
                  host: str,
                  port: Union[int, str],
-                 num_constraints: int = 0):
+                 num_constraints: int = 0,
+                 verbose: bool = True):
         """
         
         :param username: The username we're logging as on the target machine(s).
@@ -35,6 +36,7 @@ class Trainer:
         self.objective_function = objective_function
         self.num_constraints = num_constraints
         self.username = username
+        self.verbose = verbose
         try:
             self.host = socket.gethostbyname(host)
             self.port = int(port)
@@ -82,7 +84,8 @@ class Trainer:
             }
             self._send_dict_to_server(sv_conn, sv_reply)
             
-            self._send_dict_to_server(sv_conn, {"logging": "Handling"})
+            if self.verbose:
+                self._send_dict_to_server(sv_conn, {"logging": "Handling"})
             try:
                 # Handle response from Server
                 sv_responses = sv_conn.recv(NUM_BYTES_RECEIVE).decode("utf8")
@@ -100,7 +103,8 @@ class Trainer:
                     self.is_running = False
             
             # Check for messages from objective function process
-            self._send_dict_to_server(sv_conn, {"logging": "Checking"})
+            if self.verbose:
+                self._send_dict_to_server(sv_conn, {"logging": "Checking"})
             if pconn.poll():
                 obj_func_responses = pconn.recv()
                 for response in obj_func_responses.split("\n")[:-1]:
@@ -113,7 +117,6 @@ class Trainer:
                     if "logging" in response:
                         sv_reply["logging"] = response["logging"]
                     if "objective" in response:
-                        self._send_dict_to_server(sv_conn, {"logging": "Observation.. "})
                         sv_reply["observation"] = response
                         with self.lock_max_gpu_usage:
                             max_gpu_usage = self.max_gpu_usage.value 

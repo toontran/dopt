@@ -20,7 +20,7 @@ class Server:
                  optimizer: Optimizer,
                  config: Dict,
                  initial_candidates: Union[None, List[Dict]] = None,
-                 verbose: Union[True, False] = True
+                 verbose: bool = True
         ) -> None:
         """Need docs on the config"""
         self.optimizer = optimizer
