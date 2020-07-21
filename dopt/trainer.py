@@ -109,7 +109,8 @@ class Trainer:
                 obj_func_responses = pconn.recv()
                 for response in obj_func_responses.split("\n")[:-1]:
                     response = json.loads(response)
-                    self._send_dict_to_server(sv_conn, {"logging": "Objective func Response: " + str(response)})
+                    if self.verbose:
+                        self._send_dict_to_server(sv_conn, {"logging": "Objective func Response: " + str(response)})
                     
                     # Handle response from objective function process
                     # and relay message to the Server
@@ -119,13 +120,16 @@ class Trainer:
                     if "objective" in response:
                         sv_reply["observation"] = response
                         with self.lock_max_gpu_usage:
-                            max_gpu_usage = self.max_gpu_usage.value 
+                            max_gpu_usage = self.max_gpu_usage.value
+                            self.max_gpu_usage.value = 0
+                            self._send_dict_to_server(sv_conn, {"logging": "Max GPU usage: " + str(max_gpu_usage)})
                         if response["constraints"][0] > 0 and \
                                 max_gpu_usage < MAXIMUM_ALLOWED_GPU_PERCENTAGE:
                             sv_reply["observation"]["contention_failure"] = True
                         else:
                             sv_reply["observation"]["contention_failure"] = False
-                    self._send_dict_to_server(sv_conn, {"logging": "Server reply " + str(sv_reply)})
+                    if self.verbose:
+                        self._send_dict_to_server(sv_conn, {"logging": "Server reply " + str(sv_reply)})
                     self._send_dict_to_server(sv_conn, sv_reply)
             
             # Interval of communication
@@ -164,8 +168,13 @@ class Trainer:
             try:
                 print("Evaluating objective function")
                 observation = self.objective_function(candidate)
+                # Add GPU memory constraints
+                with self.lock_max_gpu_usage:
+                    observation['constraints'] = \
+                            [self.max_gpu_usage.value - MAXIMUM_ALLOWED_GPU_PERCENTAGE] + \
+                            observation["constraints"]
             except Exception as e:
-                if 'CUDA out of memory' in str(e):
+                if 'out of memory' in str(e):
                     torch.cuda.empty_cache()
                     mean, variance = 0.001, 0.001
                     observation = {
@@ -175,13 +184,6 @@ class Trainer:
                 else:
                     raise e
             elapsed = datetime.now() - start
-                
-            # Add GPU memory constraints
-            with self.lock_max_gpu_usage:
-                observation['constraints'] = \
-                        [self.max_gpu_usage.value - MAXIMUM_ALLOWED_GPU_PERCENTAGE] + \
-                        observation["constraints"]
-                self.max_gpu_usage.value = 0
                 
             observation["time_started"] = start.strftime("%m/%d/%Y-%H:%M:%S")
             observation["time_elapsed"] = round(elapsed.seconds/3600, 2) # In hours, rounded to 2nd decimal

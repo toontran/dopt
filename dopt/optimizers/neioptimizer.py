@@ -168,7 +168,6 @@ class NEIOptimizer(Optimizer):
             print("Generating initial candidate(s)")
             return self._generate_random_candidate()
 
-        print(f"Optimizer received \n{self.observations[-1]}")
         mll, model = self._initialize_model()
         fit_gpytorch_model(mll)
         self._initialize_acqf()
@@ -199,9 +198,6 @@ class NEIOptimizer(Optimizer):
         candidate = {}
         for i, key in enumerate(self.get_labels()):
             candidate[key] = torch_candidate.cpu().numpy()[0][i]
-
-        print(f"Sending candidate: {candidate}\n"
-              f"Number of observations: {len(self.observations)}")
 
         return candidate
         

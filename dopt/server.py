@@ -62,10 +62,11 @@ class Server:
             p.start()
         
         while True:
-            with self.lock_trainers:
-                print("Number of Trainers running:", len(self.trainers))
-            with self.lock_trainer_queue:
-                print("Number of Trainers in the Queue:", self.trainer_queue.qsize())
+            if self.verbose:
+                with self.lock_trainers:
+                    print("Number of Trainers running:", len(self.trainers))
+                with self.lock_trainer_queue:
+                    print("Number of Trainers in the Queue:", self.trainer_queue.qsize())
             if not self.trainer_queue.empty():
                 print("A Trainer is ready")
                 
@@ -202,7 +203,12 @@ class Server:
                 with self.lock_trainer_queue:
                     self.trainer_queue.put(trainer_id)
             if "logging" in response:
-                print(f'[{address}]:{response["logging"]}') # For now
+                if self.verbose:
+                    print(f'[{address}]:{response["logging"]}') # For now
+                else:
+                    log_file_name = "logs_" + self.optimizer.file_name.split(".")[0] + ".txt"
+                    with open(log_file_name, "a") as f:
+                        f.write(f"[{address}]:{response['logging']}\n")
             if "gpu_info" in response:
                 with self.lock_trainers:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now

@@ -133,6 +133,7 @@ class Optimizer(ABC):
             reply = json.dumps({"candidate": candidate})
             self.server_conn.send(reply)                
             print("Optimizer sent:", reply)
+            print(f"Number of observations: {len(self.observations)}")
         
     @abstractmethod
     def generate_candidate(self) \
