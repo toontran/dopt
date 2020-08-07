@@ -19,7 +19,7 @@ class Server:
     def __init__(self, 
                  optimizer: Optimizer,
                  config: Dict,
-                 initial_candidates: Union[None, List[Dict]] = None,
+#                  initial_candidates: Union[None, List[Dict]] = None,
                  verbose: bool = True
         ) -> None:
         """Need docs on the config"""
@@ -29,8 +29,8 @@ class Server:
         self.trainers = Manager().dict()
         self.trainer_id = 0
         self.trainer_queue = Queue()
-        self.initial_candidates = initial_candidates \
-                        if isinstance(initial_candidates, list) else []
+#         self.initial_candidates = initial_candidates \
+#                         if isinstance(initial_candidates, list) else []
         self.verbose = verbose
         # Locks for multiprocess or multithreaded access to resource
         self.lock_trainers = Lock()
@@ -70,10 +70,10 @@ class Server:
             if not self.trainer_queue.empty():
                 print("A Trainer is ready")
                 
-                if len(self.initial_candidates) > 0:
-                    candidate = self.initial_candidates.pop()
-                    candidate = dict(sorted(candidate.items())) # Need to sort first
-                elif self.optimizer_conn.poll(None): # There's a candidate available
+#                 if len(self.initial_candidates) > 0:
+#                     candidate = self.initial_candidates.pop()
+#                     candidate = dict(sorted(candidate.items())) # Need to sort first
+                if self.optimizer_conn.poll(None): # There's a candidate available
                     with self.lock_optimizer_conn:
                         message = self.optimizer_conn.recv()
                     message = json.loads(message)
