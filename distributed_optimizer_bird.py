@@ -104,7 +104,7 @@ def objective_function(candidate):
     try:
         feasibility = get_feasibility(candidate)
     except Exception as e:
-        raise Exception(e + " And candidate is:" + str(candidate))
+        raise Exception(str(e) + " And candidate is:" + str(candidate))
     if feasibility > 0:
         print("Infeasible!")
         observation = {
