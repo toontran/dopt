@@ -128,13 +128,16 @@ class Optimizer(ABC):
                 
              # Find one potential candidate to try next based on the info
             candidate: Dict[str, Any] = self.generate_candidate()
-            candidate["id"] = 1 + len(self.observations) + len(self.pending_candidates)
+            candidate["id"] = self.generate_id()
             self.pending_candidates.append(candidate)
             
             reply = json.dumps({"candidate": candidate})
             self.server_conn.send(reply)                
             print("Optimizer sent:", reply)
             print(f"Number of observations: {len(self.observations)}")
+            
+    def generate_id(self):
+        return 1 + len(self.observations) + len(self.pending_candidates)
         
     @abstractmethod
     def generate_candidate(self) \

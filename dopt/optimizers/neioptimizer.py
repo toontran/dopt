@@ -96,6 +96,7 @@ class NEIOptimizer(Optimizer):
             self, 
             file_name: str,
             bounds: Dict[str, Tuple[float, float]],
+            initial_candidates: Optional[list] = [],
             device: Optional[str] = "cpu",
             seed: Optional[int] = random.randint(1, 100000),
         ) -> None:
@@ -109,6 +110,7 @@ class NEIOptimizer(Optimizer):
         self.device = device
         self.current_model = None
         self.num_constraints = None
+        self.initial_candidates = initial_candidates
         
     def _generate_random_candidate(self) -> Dict[str, Any]:
         r"""Randomly generate a candidate in the known boundaries. Is uniform random."""
@@ -136,7 +138,7 @@ class NEIOptimizer(Optimizer):
         train_x, train_obj, train_var= [], [], []
         train_cons = [[] for i in range(self.num_constraints)]
         for o in self.observations:
-            train_x.append(list(o["candidate"].values()))
+            train_x.append(list(o["candidate"].values())[:-1]) # Last key of candidate is id
             train_obj.append(o["objective"][0])
             train_var.append(o["objective"][1])
             for i in range(self.num_constraints):
@@ -198,7 +200,7 @@ class NEIOptimizer(Optimizer):
             )
         self.qNEI = qNEIModified(
             model=self.current_model, 
-            X_baseline=self.observation_list_to_tensor("candidate"),
+            X_baseline=self.observation_to_candidate_tensor(),
             X_pending=self.pending_candidate_list_to_tensor(),
             sampler=qmc_sampler,
             objective=constrained_obj
@@ -210,7 +212,12 @@ class NEIOptimizer(Optimizer):
         :param is_random: Set to True if want to generate randomly
         """
         
-        if len(self.observations) == 0:
+        if len(self.initial_candidates) > 0:
+            candidate = self.initial_candidates.pop()
+            candidate = dict(sorted(candidate.items()))
+            candidate["id"] = self.generate_id()
+            return candidate
+        elif len(self.observations) == 0 and len(self.initial_candidates) == 0:
             # If no previous observation or if initial candidate(s) are specified (may be more than one)
             # Then use initial candidate(s), If no initial candidate available, generate randomly.
             print("Generating initial candidate(s)")
@@ -249,12 +256,12 @@ class NEIOptimizer(Optimizer):
 
         return candidate
         
-    def observation_list_to_tensor(self, key):
-        return torch.tensor([list(o[key].values()) for o in self.observations], 
+    def observation_to_candidate_tensor(self):
+        return torch.tensor([list(o["candidate"].values())[:-1] for o in self.observations], 
                      device=self.device, dtype=NEIOptimizer.DTYPE)
 
     def pending_candidate_list_to_tensor(self):
-        t = torch.tensor([list(c.values()) for c in self.pending_candidates], 
+        t = torch.tensor([list(c.values())[:-1] for c in self.pending_candidates], 
                      device=self.device, dtype=NEIOptimizer.DTYPE)
         if t.shape[-1] == 0:
             return None
