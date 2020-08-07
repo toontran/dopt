@@ -139,7 +139,7 @@ class Trainer:
     def _send_dict_to_server(self, sv_conn, d):
         try:
             sv_conn.sendall(str.encode(json.dumps(d) + "\n"))
-        except:
+        except Exception as e:
             print("Stopping...")
             print(e)
             self.is_running = False

@@ -77,7 +77,7 @@ CONFIG["optimizer"] = {
 
 
 def get_feasibility(candidate) -> float:
-    x1, x2 = candidate.values()
+    x1, x2, _ = candidate.values()
     return -(x1 - x2 + 1.5)
     
 def objective_function_torch_input(X):

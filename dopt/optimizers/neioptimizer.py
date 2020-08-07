@@ -23,9 +23,57 @@ from botorch.sampling.samplers import MCSampler, SobolQMCNormalSampler
 from botorch.optim import optimize_acqf
 from botorch.acquisition.objective import ConstrainedMCObjective
 from botorch.utils.sampling import draw_sobol_normal_samples
+from botorch.utils.transforms import (
+    concatenate_pending_points,
+    match_batch_shape,
+    t_batch_mode_transform
+)
 
 from dopt.optimizers.optimizer import Optimizer
 from dopt.utils import generate_seed
+
+
+class qNEIModified(qNoisyExpectedImprovement):
+    def __init__(self, model: Model, X_baseline: Tensor,
+        sampler: Optional[MCSampler] = None,
+        objective: Optional[MCAcquisitionObjective] = None,
+        X_pending: Optional[Tensor] = None,
+        prune_baseline: bool = False,
+    ) -> None:
+        super().__init__(model=model, X_baseline=X_baseline, sampler=sampler, objective=objective,
+                         X_pending=X_pending, prune_baseline=prune_baseline)
+        self.count = 0
+        
+        
+    @concatenate_pending_points
+    @t_batch_mode_transform()
+    def forward(self, X: Tensor) -> Tensor:
+        r"""Evaluate qNoisyExpectedImprovement on the candidate set `X`.
+
+        Args:
+            X: A `batch_shape x q x d`-dim Tensor of t-batches with `q` `d`-dim design
+                points each.
+
+        Returns:
+            A `batch_shape'`-dim Tensor of Noisy Expected Improvement values at the
+            given design points `X`, where `batch_shape'` is the broadcasted batch shape
+            of model and input `X`.
+        """
+        self.count += 1
+        q = X.shape[-2]
+        match_batch_shape(self.X_baseline, X)
+        X_full = torch.cat([X, match_batch_shape(self.X_baseline, X)], dim=-2)
+#         X_full = X
+        
+        self.posterior = self.model.posterior(X_full)
+        if self.count == 100 or self.count == 101 or self.count == 102:
+            print(f"Posterior: {self.posterior.mean, self.posterior.variance}, count: {self.count}")
+        samples = self.sampler(self.posterior)
+        obj = self.objective(samples)
+        if self.count == 100 or self.count == 101 or self.count == 102:
+            print(f"Objective: {obj.shape}, {obj}")
+        diffs = obj[:, :, :q].max(dim=-1)[0] - obj[:, :, q:].max(dim=-1)[0]
+        return diffs.clamp_min(0).mean(dim=0)
 
 
 # Find mean and variance of Gaussian Process
@@ -148,7 +196,7 @@ class NEIOptimizer(Optimizer):
                 objective=lambda Z: Z[..., 0],
                 constraints=constraint_functions
             )
-        self.qNEI = qNoisyExpectedImprovement(
+        self.qNEI = qNEIModified(
             model=self.current_model, 
             X_baseline=self.observation_list_to_tensor("candidate"),
             X_pending=self.pending_candidate_list_to_tensor(),
