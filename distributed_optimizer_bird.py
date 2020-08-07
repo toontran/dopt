@@ -101,10 +101,7 @@ def objective_function_torch_input(X):
     
 # Plug in the objective function here
 def objective_function(candidate):  
-    try:
-        feasibility = get_feasibility(candidate)
-    except Exception as e:
-        raise Exception(str(e) + " And candidate is:" + str(candidate))
+    feasibility = get_feasibility(candidate)
     if feasibility > 0:
         print("Infeasible!")
         observation = {

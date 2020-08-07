@@ -164,6 +164,8 @@ class Trainer:
             except Exception as e:
                 print(e)
             # with redirect_print():
+            raise Exception("Oh no!", str(candidate))
+            
             start = datetime.now()
             try:
                 print("Evaluating objective function")
