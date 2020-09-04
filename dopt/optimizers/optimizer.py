@@ -137,7 +137,14 @@ class Optimizer(ABC):
             print(f"Number of observations: {len(self.observations)}")
             
     def generate_id(self):
-        return 1 + len(self.observations) + len(self.pending_candidates)
+        current_ids = [o["candidate"]["id"] for o in self.observations]
+        current_ids += [candidate["id"] for candidate in self.pending_candidates]
+        i = 1
+        while i <= len(current_ids) + 1:
+            if i not in current_ids:
+                break
+            i += 1    
+        return i
         
     @abstractmethod
     def generate_candidate(self) \

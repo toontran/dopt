@@ -62,16 +62,10 @@ class qNEIModified(qNoisyExpectedImprovement):
         self.count += 1
         q = X.shape[-2]
         match_batch_shape(self.X_baseline, X)
-        X_full = torch.cat([X, match_batch_shape(self.X_baseline, X)], dim=-2)
-#         X_full = X
-        
+        X_full = torch.cat([X, match_batch_shape(self.X_baseline, X)], dim=-2)        
         self.posterior = self.model.posterior(X_full)
-        if self.count == 100 or self.count == 101 or self.count == 102:
-            print(f"Posterior: {self.posterior.mean, self.posterior.variance}, count: {self.count}")
         samples = self.sampler(self.posterior)
         obj = self.objective(samples)
-        if self.count == 100 or self.count == 101 or self.count == 102:
-            print(f"Objective: {obj.shape}, {obj}")
         diffs = obj[:, :, :q].max(dim=-1)[0] - obj[:, :, q:].max(dim=-1)[0]
         return diffs.clamp_min(0).mean(dim=0)
 
