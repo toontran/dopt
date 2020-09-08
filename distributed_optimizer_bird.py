@@ -25,9 +25,9 @@ CONFIG["computer_list"] = {
     "acet": [
         'tst008@acet116-lnx-11.bucknell.edu',
         'tst008@acet116-lnx-12.bucknell.edu',
-#         'tst008@acet116-lnx-13.bucknell.edu',
-#         'tst008@acet116-lnx-14.bucknell.edu',
-#         'tst008@acet116-lnx-15.bucknell.edu',
+        'tst008@acet116-lnx-13.bucknell.edu',
+        'tst008@acet116-lnx-14.bucknell.edu',
+        'tst008@acet116-lnx-15.bucknell.edu',
 #         'tst008@acet116-lnx-16.bucknell.edu',
 #         'tst008@acet116-lnx-17.bucknell.edu',
 #         'tst008@acet116-lnx-18.bucknell.edu',
@@ -101,6 +101,7 @@ def objective_function_torch_input(X):
     
 # Plug in the objective function here
 def objective_function(candidate):  
+    print(candidate)
     feasibility = get_feasibility(candidate)
     if feasibility > 0:
         print("Infeasible!")
