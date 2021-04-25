@@ -163,11 +163,11 @@ def start_server():
     optimizer = NEIOptimizer(
         CONFIG["optimizer"]["filename"], 
         CONFIG["optimizer"]["bounds"], 
+        initial_candidates=CONFIG["optimizer"]["initial_candidates"],
         device=CONFIG["optimizer"]["device"],
         seed=CONFIG["optimizer"]["seed"]
     )
-    server = Server(optimizer, CONFIG, 
-                    initial_candidates=CONFIG["optimizer"]["initial_candidates"])
+    server = Server(optimizer, CONFIG)
     server.run()
     
 def start_trainers():
