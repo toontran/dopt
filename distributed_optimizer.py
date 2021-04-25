@@ -12,7 +12,7 @@ import numpy as np
 import dopt
 from dopt import NEIOptimizer, Trainer, Server
 from dopt.utils import get_output_shape
-from camus_objective import run_kfolds # The objective function
+# from camus_objective import run_kfolds # The objective function
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -148,6 +148,9 @@ def objective_function(data_folder, candidate):
         num_folds = 5
     )
     time.sleep(60)
+    mean = 0
+    variance = 0.1
+    feasibility = 0
     observation = {
         "objective": [mean, variance],
         "constraints": [feasibility]
