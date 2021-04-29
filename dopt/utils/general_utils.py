@@ -76,6 +76,7 @@ def get_all_gpu_processes_info():
     max_gpu = int(out_dict["Total"][0].split()[0])
     
     processes["max_gpu"] = max_gpu
+    processes["time_updated"] = datetime.now().strftime("%m/%d/%Y-%H:%M:%S")
     for i, process_id in enumerate(out_dict["Process ID"]):
         process_info = get_general_info(process_id)
         processes[process_id] = {

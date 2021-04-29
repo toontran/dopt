@@ -107,7 +107,7 @@ class Server:
                 json.dumps({"candidate": candidate}) + "\n"
             ))
             with open(self.log_file_name, "a") as f:
-                f.write(f"[server]: sent candidate {json.dumps(candidate)}\n")
+                f.write(f"[server]: {json.dumps({'candidate_sent':candidate, 'address':address})}\n")
         except Exception as e:
             print("Problem with address:", address)
             print(e)
@@ -204,16 +204,16 @@ class Server:
                 with self.lock_trainer_queue:
                     self.trainer_queue.put(trainer_id)
                 with open(self.log_file_name, "a") as f:
-                    f.write(f"[{address}]:{json.dumps(response['observation'])}\n")
+                    f.write(f"[{json.dumps(address)}]:{json.dumps(response['observation'])}\n")
             if "logging" in response:
                 if self.verbose:
                     print(f'[{address}]:{response["logging"]}') # For now
                 else:
                     with open(self.log_file_name, "a") as f:
-                        f.write(f"[{address}]:{json.dumps(response['logging'])}\n")
+                        f.write(f"[{json.dumps(address)}]:{json.dumps(response['logging'])}\n")
             if "gpu_info" in response:
                 with open(self.log_file_name, "a") as f:
-                    f.write(f"[{address}]:{json.dumps(response['gpu_info'])}\n")
+                    f.write(f"[{json.dumps(address)}]:{json.dumps(response['gpu_info'])}\n")
                 with self.lock_trainers:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
