@@ -210,10 +210,10 @@ class Server:
                     print(f'[{address}]:{response["logging"]}') # For now
                 else:
                     with open(self.log_file_name, "a") as f:
-                        f.write(f"[{address}]:{json.dumps(response['observation'])}\n")
+                        f.write(f"[{address}]:{json.dumps(response['logging'])}\n")
             if "gpu_info" in response:
                 with open(self.log_file_name, "a") as f:
-                    f.write(f"[{address}]:{json.dumps(response['observation'])}\n")
+                    f.write(f"[{address}]:{json.dumps(response['gpu_info'])}\n")
                 with self.lock_trainers:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
