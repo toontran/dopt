@@ -32,6 +32,7 @@ class Server:
 #         self.initial_candidates = initial_candidates \
 #                         if isinstance(initial_candidates, list) else []
         self.verbose = verbose
+        self.log_file_name = "logs_" + self.optimizer.file_name.split(".")[0] + ".txt"
         # Locks for multiprocess or multithreaded access to resource
         self.lock_trainers = Lock()
         self.lock_trainer_queue = Lock()
@@ -105,7 +106,8 @@ class Server:
             connection.sendall(str.encode(
                 json.dumps({"candidate": candidate}) + "\n"
             ))
-            print("Sent candidate")
+            with open(self.log_file_name, "a") as f:
+                f.write(f"[server]: sent candidate {candidate}\n")
         except Exception as e:
             print("Problem with address:", address)
             print(e)
@@ -197,19 +199,21 @@ class Server:
                 print("Loading response: ", response)
             response = json.loads(response)
             if "observation" in response:
-                print("Observation found")
                 with self.lock_optimizer_conn:
                     self.optimizer_conn.send(json.dumps(response["observation"])+'\n')
                 with self.lock_trainer_queue:
                     self.trainer_queue.put(trainer_id)
+                with open(self.log_file_name, "a") as f:
+                    f.write(f"[{address}]:{response['observation']}\n")
             if "logging" in response:
                 if self.verbose:
                     print(f'[{address}]:{response["logging"]}') # For now
                 else:
-                    log_file_name = "logs_" + self.optimizer.file_name.split(".")[0] + ".txt"
-                    with open(log_file_name, "a") as f:
+                    with open(self.log_file_name, "a") as f:
                         f.write(f"[{address}]:{response['logging']}\n")
             if "gpu_info" in response:
+                with open(self.log_file_name, "a") as f:
+                    f.write(f"[{address}]:{response['gpu_info']}\n")
                 with self.lock_trainers:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
