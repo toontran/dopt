@@ -209,7 +209,6 @@ class NEIOptimizer(Optimizer):
         if len(self.initial_candidates) > 0:
             candidate = self.initial_candidates.pop()
             candidate = dict(sorted(candidate.items()))
-            candidate["id"] = self.generate_id()
             return candidate
         elif len(self.observations) == 0 and len(self.initial_candidates) == 0:
             # If no previous observation or if initial candidate(s) are specified (may be more than one)

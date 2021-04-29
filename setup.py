@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="dopt", 
-    version="0.0.2.13",
+    version="0.0.3.18",
     author="Tung Tran",
     author_email="sontungtran99@gmail.com",
     description="Distributed Optimizer",
