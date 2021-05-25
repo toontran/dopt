@@ -148,7 +148,7 @@ class Trainer:
         total_gpu_mem = gpu_info["max_gpu"] 
         using_gpu_mem = 0
         for key in gpu_info:
-            if key == "max_gpu":
+            if key == "max_gpu" or key == "time_updated":
                 continue
             if gpu_info[key]["user"] == self.username:
                 using_gpu_mem += gpu_info[key]["gpu_used"]
