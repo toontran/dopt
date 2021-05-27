@@ -49,7 +49,7 @@ class PipeConnectionHandler(logging.Handler):
         try:
             d = dict(record.__dict__)
             d["msg"] = record.getMessage()
-            self.conn.send((json.dumps(d) + self.terminator).encode("utf8"))
+            self.conn.send(json.dumps(d) + self.terminator)
         except Exception:
             self.handleError(record)
 
@@ -126,7 +126,7 @@ class Trainer:
             }
             self._send_dict_to_server(sv_conn, sv_reply)
             
-            logging.debug("Handling")
+            self.logger.debug("Handling")
             try:
                 # Handle response from Server
                 sv_responses = sv_conn.recv(NUM_BYTES_RECEIVE).decode("utf8")

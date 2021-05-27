@@ -193,6 +193,7 @@ class Server:
         :return: A reply to the Trainer
         """
         responses = responses.decode("utf8")
+            
         
         for response in responses.split("\n")[:-1]:  
             if self.verbose:
