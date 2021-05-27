@@ -49,7 +49,7 @@ class PipeConnectionHandler(logging.Handler):
         try:
             msg = self.format(record)
             # issue 35046: merged two stream.writes into one.
-            conn.send(msg + self.terminator)
+            self.conn.send(msg + self.terminator)
         except RecursionError:  # See issue 36272
             raise
         except Exception:
