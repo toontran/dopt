@@ -47,11 +47,9 @@ class PipeConnectionHandler(logging.Handler):
         output to the stream.
         """
         try:
-            msg = self.format(record)
-            # issue 35046: merged two stream.writes into one.
-            self.conn.send(msg + self.terminator)
-        except RecursionError:  # See issue 36272
-            raise
+            d = dict(record.__dict__)
+            d["msg"] = record.getMessage()
+            self.conn.send(json.dumps(d) + terminator)
         except Exception:
             self.handleError(record)
 
@@ -176,6 +174,10 @@ class Trainer:
                             sv_reply["observation"]["contention_failure"] = True
                         else:
                             sv_reply["observation"]["contention_failure"] = False
+                    if "stack_info" in response:
+                        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                        stringReceived = logging.makeLogRecord(response)
+                        print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
                     if self.verbose:
                         self._send_dict_to_server(sv_conn, {"logging": "Server reply " + str(sv_reply)})
                     self._send_dict_to_server(sv_conn, sv_reply)
@@ -265,7 +267,7 @@ class Trainer:
                 start = datetime.now()
                 try:
                     print("Evaluating objective function")
-                    observation = self.objective_function(candidate)
+                    observation = self.objective_function(candidate, child_logger)
                     # Add GPU memory constraints
                     with self.lock_max_gpu_usage:
                         observation['constraints'] = \
