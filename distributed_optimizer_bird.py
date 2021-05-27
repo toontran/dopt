@@ -101,17 +101,17 @@ def objective_function_torch_input(X):
     return Y, Yvar.view_as(Y)**2, true_var.view_as(Y)**2
     
 # Plug in the objective function here
-def objective_function(candidate):  
-    print(candidate)
+def objective_function(candidate, logger):  
+    logger.info(candidate)
     feasibility = get_feasibility(candidate)
     if feasibility > 0:
-        print("Infeasible!")
+        logger.info("Infeasible!")
         observation = {
             "objective": [0.001, 0.001],
             "constraints": [feasibility]
         }
         return observation
-    print("Returning the observation")
+    logger.info("Returning the observation")
     
     # Simulate input
     X = torch.tensor([candidate["x1"], candidate["x2"]], dtype=float)
