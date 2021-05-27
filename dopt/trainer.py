@@ -251,6 +251,7 @@ class Trainer:
         # Child logger will report to the main logger
         child_logger = logging.getLogger('child')
         conn_handler = PipeConnectionHandler(cconn)
+        conn_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
         child_logger.addHandler(conn_handler)
         child_logger.setLevel(logging.DEBUG)
         try:
