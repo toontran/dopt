@@ -155,7 +155,8 @@ class Trainer:
                     try:
                         response = json.loads(response)
                     except ValueError as e:
-                        pass
+                        print(response)
+                        continue
                     if self.verbose:
                         self._send_dict_to_server(sv_conn, {"logging": "Objective func Response: " + str(response)})
                     
