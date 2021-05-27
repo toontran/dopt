@@ -23,7 +23,7 @@ MAXIMUM_ALLOWED_GPU_PERCENTAGE = 0.9
 SERVER_TRAINER_MESSAGE_INTERVAL = 5
 
 
-class PipeConnectionHandler(Handler):
+class PipeConnectionHandler(logging.Handler):
     """
     A handler class which writes logging records, appropriately formatted,
     to a pipe connection. 
