@@ -52,13 +52,13 @@ class ModifiedSocketHandler(logging.handlers.SocketHandler):
         """
         Emit a record.
 
-        Pickles the record and writes it to the socket in binary format.
-        The only change from original SocketHandler is encoding pickle 
-        before sending.
+        Not pickling record, directly send json serialized dictionary 
+        of the record.
         """
         try:
-            s = self.makePickle(record)
-            self.send(s.encode("utf8"))
+            d = dict(record.__dict__)
+            d["msg"] = record.getMessage()
+            self.send(str.encode(json.dumps(d) + self.terminator, encoding="utf8"))
         except Exception:
             self.handleError(record)
 
@@ -194,7 +194,7 @@ class Trainer:
         
     def _send_dict_to_server(self, sv_conn, d):
         try:
-            sv_conn.sendall(str.encode(json.dumps(d) + "\n"))
+            sv_conn.sendall(str.encode(json.dumps(d) + "\n", encoding="utf8"))
         except Exception as e:
             print("Stopping...")
             print(e)
