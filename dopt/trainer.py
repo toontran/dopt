@@ -83,9 +83,9 @@ class Trainer:
         self.max_gpu_usage = Value('d', 0.0)
         self.is_running = True
         
-#         self.logger = logging.getLogger('') # to log Led Observer output over a socket
-#         self.handler = logging.handlers.SocketHandler(host,port) # handler to write to socket
-#         self.logger.addHandler(self.handler)
+        self.logger = logging.getLogger('') # to log Led Observer output over a socket
+        self.handler = logging.handlers.SocketHandler(host,port) # handler to write to socket
+        self.logger.addHandler(self.handler)
         
         self.lock_max_gpu_usage = Lock()
         
@@ -126,8 +126,7 @@ class Trainer:
             }
             self._send_dict_to_server(sv_conn, sv_reply)
             
-            if self.verbose:
-                self._send_dict_to_server(sv_conn, {"logging": "Handling"})
+            logging.debug("Handling")
             try:
                 # Handle response from Server
                 sv_responses = sv_conn.recv(NUM_BYTES_RECEIVE).decode("utf8")
@@ -161,8 +160,6 @@ class Trainer:
                     # Handle response from objective function process
                     # and relay message to the Server
                     sv_reply = {}
-                    if "logging" in response:
-                        sv_reply["logging"] = response["logging"]
                     if "objective" in response:
                         sv_reply["observation"] = response
                         with self.lock_max_gpu_usage:
@@ -175,6 +172,7 @@ class Trainer:
                         else:
                             sv_reply["observation"]["contention_failure"] = False
                     if "stack_info" in response:
+                        # Log
                         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
                         stringReceived = logging.makeLogRecord(response)
                         print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
@@ -258,7 +256,6 @@ class Trainer:
         child_logger.setLevel(logging.DEBUG)
         try:
             while True:   
-                child_logger.debug("Yoooo")
                 # Receive candidate
                 candidate = cconn.recv()
                 candidate = json.loads(candidate)
@@ -266,7 +263,7 @@ class Trainer:
                 # Train on candiate
                 start = datetime.now()
                 try:
-                    print("Evaluating objective function")
+                    child_logger.debug("Evaluating objective function")
                     observation = self.objective_function(candidate, child_logger)
                     # Add GPU memory constraints
                     with self.lock_max_gpu_usage:
@@ -291,7 +288,6 @@ class Trainer:
                 # Add candidate into observation then send back to parent process
                 observation.update({"candidate": candidate})
                 cconn.send(json.dumps(observation) + "\n")
-                
         except:
             child_logger.exception("Error in observing objective function")
 
