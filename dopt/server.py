@@ -1,6 +1,7 @@
 import os, sys, time
 from typing import Dict, List, Union
 import json
+import logging
 
 import socket
 from _thread import start_new_thread
@@ -227,5 +228,10 @@ class Server:
                     f.write(f"[{json.dumps(address)}]:{json.dumps(response['gpu_info'])}\n")
                 with self.lock_trainers:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
+            if "stack_info" in response:
+                # Log
+                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                stringReceived = logging.makeLogRecord(response)
+                print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
         
