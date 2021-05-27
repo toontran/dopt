@@ -38,13 +38,6 @@ class PipeConnectionHandler(logging.Handler):
     def emit(self, record):
         """
         Emit a record.
-
-        If a formatter is specified, it is used to format the record.
-        The record is then written to the stream with a trailing newline.  If
-        exception information is present, it is formatted using
-        traceback.print_exception and appended to the stream.  If the stream
-        has an 'encoding' attribute, it is used to determine how to do the
-        output to the stream.
         """
         try:
             d = dict(record.__dict__)
@@ -52,7 +45,22 @@ class PipeConnectionHandler(logging.Handler):
             self.conn.send(json.dumps(d) + self.terminator)
         except Exception:
             self.handleError(record)
+            
 
+class ModifiedSocketHandler(logging.handlers.SocketHandler):
+    def emit(self, record):
+        """
+        Emit a record.
+
+        Pickles the record and writes it to the socket in binary format.
+        The only change from original SocketHandler is encoding pickle 
+        before sending.
+        """
+        try:
+            s = self.makePickle(record)
+            self.send(s.encode("utf8"))
+        except Exception:
+            self.handleError(record)
 
 
 class Trainer:
@@ -84,7 +92,7 @@ class Trainer:
         self.is_running = True
         
         self.logger = logging.getLogger('') # to log Led Observer output over a socket
-        self.handler = logging.handlers.SocketHandler(host,port) # handler to write to socket
+        self.handler = ModifiedSocketHandler(host,port) # handler to write to socket
         self.logger.addHandler(self.handler)
         
         self.lock_max_gpu_usage = Lock()
