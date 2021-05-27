@@ -32,7 +32,7 @@ class PipeConnectionHandler(logging.Handler):
     terminator = '\n'
 
     def __init__(self, conn):
-        Handler.__init__(self)
+        logging.Handler.__init__(self)
         self.conn = conn
 
     def emit(self, record):
