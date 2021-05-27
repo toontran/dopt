@@ -25,10 +25,8 @@ SERVER_TRAINER_MESSAGE_INTERVAL = 5
 
 class PipeConnectionHandler(logging.Handler):
     """
-    A handler class which writes logging records, appropriately formatted,
-    to a pipe connection. 
+    A handler class which writes logging records, to a pipe connection. 
     """
-
     terminator = '\n'
 
     def __init__(self, conn):
@@ -48,6 +46,7 @@ class PipeConnectionHandler(logging.Handler):
             
 
 class ModifiedSocketHandler(logging.handlers.SocketHandler):
+    terminator = '\n'
     def emit(self, record):
         """
         Emit a record.
