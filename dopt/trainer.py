@@ -49,7 +49,7 @@ class PipeConnectionHandler(logging.Handler):
         try:
             d = dict(record.__dict__)
             d["msg"] = record.getMessage()
-            self.conn.send(json.dumps(d) + terminator)
+            self.conn.send(json.dumps(d) + self.terminator)
         except Exception:
             self.handleError(record)
 
