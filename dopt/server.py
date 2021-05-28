@@ -221,7 +221,7 @@ class Server:
             if "stack_info" in response:
                 # Log
                 logger = logging.getLogger(f"{json.dumps(address)}")
-                logger.setFormatter(logging.Formatter('[%(name)s - %(asctime)s - %(levelname)s] %(message)s')
+                logger.setFormatter(logging.Formatter('[%(name)s - %(asctime)s - %(levelname)s] %(message)s'))
                 stringReceived = logger.makeLogRecord(response)
                 print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
