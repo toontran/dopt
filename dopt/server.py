@@ -199,17 +199,7 @@ class Server:
         for response in responses.split("\n")[:-1]:  
             if self.verbose:
                 print("Loading response: ", response)
-            try:
-                response = json.loads(response)
-            except ValueError as e:
-                # Is log
-                import struct
-                slen = struct.unpack(">L", chunk[:4])[0]
-                obj = pickle.loads(chunk[4:])
-                print('un pickling log: ', repr(obj))
-                stringReceived = logging.makeLogRecord(obj)
-                #log_msg = logging.makeLogRecord(stringReceived)
-                print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
+            response = json.loads(response)
             if "observation" in response:
                 with self.lock_optimizer_conn:
                     self.optimizer_conn.send(json.dumps(response["observation"])+'\n')
@@ -230,7 +220,8 @@ class Server:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
             if "stack_info" in response:
                 # Log
-                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                logger = logging.getLogger(f"{json.dumps(address)}")
+                formatter = logging.Formatter('[%(name)s - %(asctime)s - %(levelname)s] %(message)s')
                 stringReceived = logging.makeLogRecord(response)
                 print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 

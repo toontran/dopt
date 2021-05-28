@@ -108,88 +108,89 @@ class Trainer:
             sys.exit(0)
             
         sv_conn.setblocking(False) # Do not wait to recv()
-
+        
+        try:
         # Request the first candidate. Ready to work
-        initial_message = {
-            "observation": {},
-            "gpu_info": get_all_gpu_processes_info()
-        }
-        self._send_dict_to_server(sv_conn, initial_message) 
-        
-        # Evaluate Objective Function in a separate Process
-        # Parent process sends candidates
-        # Child process sends observation and print statements
-        pconn, cconn = Pipe()
-        objective_function_process = Process(target=self.evaluate_objective_function, \
-                        args=(cconn,))
-        objective_function_process.start()
-        
-        while self.is_running:
-            # Send gpu info to the Server regularly
-            gpu_info = get_all_gpu_processes_info()
-            self._update_max_gpu_usage(gpu_info)
-            sv_reply = {
+            initial_message = {
+                "observation": {},
                 "gpu_info": get_all_gpu_processes_info()
             }
-            self._send_dict_to_server(sv_conn, sv_reply)
-            
-            self.logger.debug("Handling")
-            try:
-                # Handle response from Server
-                sv_responses = sv_conn.recv(NUM_BYTES_RECEIVE).decode("utf8")
-                for response in sv_responses.split('\n')[:-1]:
-                    response = json.loads(response)
-                    if "candidate" in response:
-                        pconn.send(json.dumps(response["candidate"])) # <---- This
-                    if "command" in response:
-                        pass # Feature to be developed
-            except Exception as e:
-                if "Resource temporarily unavailable" in str(e):
-                    pass
-                else:
-                    print(e)
-                    self.is_running = False
-            
-            # Check for messages from objective function process
-            if self.verbose:
-                self._send_dict_to_server(sv_conn, {"logging": "Checking"})
-            if pconn.poll():
-                obj_func_responses = pconn.recv()
-                for response in obj_func_responses.split("\n")[:-1]:
-                    try:
+            self._send_dict_to_server(sv_conn, initial_message) 
+
+            # Evaluate Objective Function in a separate Process
+            # Parent process sends candidates
+            # Child process sends observation and print statements
+            pconn, cconn = Pipe()
+            objective_function_process = Process(target=self.evaluate_objective_function, \
+                            args=(cconn,))
+            objective_function_process.start()
+
+            while self.is_running:
+                # Send gpu info to the Server regularly
+                gpu_info = get_all_gpu_processes_info()
+                self._update_max_gpu_usage(gpu_info)
+                sv_reply = {
+                    "gpu_info": get_all_gpu_processes_info()
+                }
+                self._send_dict_to_server(sv_conn, sv_reply)
+
+                self.logger.debug("Handling")
+                try:
+                    # Handle response from Server
+                    sv_responses = sv_conn.recv(NUM_BYTES_RECEIVE).decode("utf8")
+                    for response in sv_responses.split('\n')[:-1]:
                         response = json.loads(response)
-                    except ValueError as e:
-                        print(response)
-                        continue
-                    if self.verbose:
-                        self._send_dict_to_server(sv_conn, {"logging": "Objective func Response: " + str(response)})
-                    
-                    # Handle response from objective function process
-                    # and relay message to the Server
-                    sv_reply = {}
-                    if "objective" in response:
-                        sv_reply["observation"] = response
-                        with self.lock_max_gpu_usage:
-                            max_gpu_usage = self.max_gpu_usage.value
-                            self.max_gpu_usage.value = 0
-                            self._send_dict_to_server(sv_conn, {"logging": "Max GPU usage: " + str(max_gpu_usage)})
-                        if response["constraints"][0] > 0 and \
-                                max_gpu_usage < MAXIMUM_ALLOWED_GPU_PERCENTAGE:
-                            sv_reply["observation"]["contention_failure"] = True
-                        else:
-                            sv_reply["observation"]["contention_failure"] = False
-                    if "stack_info" in response:
-                        # Log
-                        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-                        stringReceived = logging.makeLogRecord(response)
-                        print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
-                    if self.verbose:
-                        self._send_dict_to_server(sv_conn, {"logging": "Server reply " + str(sv_reply)})
-                    self._send_dict_to_server(sv_conn, sv_reply)
-            
-            # Interval of communication
-            time.sleep(SERVER_TRAINER_MESSAGE_INTERVAL)
-        p.kill()
+                        if "candidate" in response:
+                            pconn.send(json.dumps(response["candidate"])) # <---- This
+                        if "command" in response:
+                            pass # Feature to be developed
+                except Exception as e:
+                    if "Resource temporarily unavailable" in str(e):
+                        pass
+                    else:
+                        print(e)
+                        self.is_running = False
+
+                # Check for messages from objective function process
+                self.logger.debug("Checking")
+                if pconn.poll():
+                    obj_func_responses = pconn.recv()
+                    for response in obj_func_responses.split("\n")[:-1]:
+                        try:
+                            response = json.loads(response)
+                        except ValueError as e:
+                            print(response)
+                            continue
+                        self.logger.debug("Objective func Response: " + str(response))
+
+                        # Handle response from objective function process
+                        # and relay message to the Server
+                        sv_reply = {}
+                        if "objective" in response:
+                            sv_reply["observation"] = response
+                            with self.lock_max_gpu_usage:
+                                max_gpu_usage = self.max_gpu_usage.value
+                                self.max_gpu_usage.value = 0
+                                self.logger.debug( "Max GPU usage: " + str(max_gpu_usage))
+                            if response["constraints"][0] > 0 and \
+                                    max_gpu_usage < MAXIMUM_ALLOWED_GPU_PERCENTAGE:
+                                sv_reply["observation"]["contention_failure"] = True
+                            else:
+                                sv_reply["observation"]["contention_failure"] = False
+                        if "stack_info" in response:
+                            # Log
+                            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                            stringReceived = logging.makeLogRecord(response)
+                            print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
+                        if self.verbose:
+                            self.logger.debug( "Server reply " + str(sv_reply))
+                        self._send_dict_to_server(sv_conn, sv_reply)
+
+                # Interval of communication
+                time.sleep(SERVER_TRAINER_MESSAGE_INTERVAL)
+            p.kill()
+        except:
+            self.logger.exception("Error in Trainer.run()")
         
     def _send_dict_to_server(self, sv_conn, d):
         try:
