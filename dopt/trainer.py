@@ -25,7 +25,7 @@ SERVER_TRAINER_MESSAGE_INTERVAL = 5
 
 class PipeConnectionHandler(logging.Handler):
     """
-    A handler class which writes logging records, to a pipe connection. 
+    A handler class which writes logging records, to a pipe connection.
     """
     terminator = '\n'
 
@@ -43,7 +43,7 @@ class PipeConnectionHandler(logging.Handler):
             self.conn.send(json.dumps(d) + self.terminator)
         except Exception:
             self.handleError(record)
-            
+
 
 class ModifiedSocketHandler(logging.handlers.SocketHandler):
     terminator = '\n'
@@ -51,7 +51,7 @@ class ModifiedSocketHandler(logging.handlers.SocketHandler):
         """
         Emit a record.
 
-        Not pickling record, directly send json serialized dictionary 
+        Not pickling record, directly send json serialized dictionary
         of the record.
         """
         try:
@@ -63,8 +63,8 @@ class ModifiedSocketHandler(logging.handlers.SocketHandler):
 
 
 class Trainer:
-    
-    def __init__(self, 
+
+    def __init__(self,
                  objective_function: Callable[[Dict], Tuple],
                  username: str,
                  host: str,
@@ -72,10 +72,10 @@ class Trainer:
                  num_constraints: int = 0,
                  verbose: bool = True):
         """
-        
+
         :param username: The username we're logging as on the target machine(s).
         :param host: Host name or IP of the Server.
-        :param port: 
+        :param port:
         """
         self.objective_function = objective_function
         self.num_constraints = num_constraints
@@ -89,16 +89,16 @@ class Trainer:
             print(e)
         self.max_gpu_usage = Value('d', 0.0)
         self.is_running = True
-        
+
         self.logger = logging.getLogger('') # to log Led Observer output over a socket
         self.handler = ModifiedSocketHandler(host,port) # handler to write to socket
         self.logger.addHandler(self.handler)
-        
+
         self.lock_max_gpu_usage = Lock()
-        
+
     def run(self):
         """Spawns 1 child Process, to evaluate objective function
-        when receive a candidate. """        
+        when receive a candidate. """
         sv_conn = socket.socket()
         print('Waiting for connections from', self.host, ":", self.port)
         try:
@@ -106,16 +106,16 @@ class Trainer:
         except Exception as e:
             print("Can't connect!", str(e))
             sys.exit(0)
-            
+
         sv_conn.setblocking(False) # Do not wait to recv()
-        
+
         try:
         # Request the first candidate. Ready to work
             initial_message = {
                 "observation": {},
                 "gpu_info": get_all_gpu_processes_info()
             }
-            self._send_dict_to_server(sv_conn, initial_message) 
+            self._send_dict_to_server(sv_conn, initial_message)
 
             # Evaluate Objective Function in a separate Process
             # Parent process sends candidates
@@ -191,7 +191,7 @@ class Trainer:
             p.kill()
         except:
             self.logger.exception("Error in Trainer.run()")
-        
+
     def _send_dict_to_server(self, sv_conn, d):
         try:
             sv_conn.sendall(str.encode(json.dumps(d) + "\n", encoding="utf8"))
@@ -199,13 +199,13 @@ class Trainer:
             print("Stopping...")
             print(e)
             self.is_running = False
-    
+
 #     def _send_dict_to_server(self, d):
 #         json.dumps(d)
-            
-            
+
+
     def _update_max_gpu_usage(self, gpu_info):
-        total_gpu_mem = gpu_info["max_gpu"] 
+        total_gpu_mem = gpu_info["max_gpu"]
         using_gpu_mem = 0
         for key in gpu_info:
             if key == "max_gpu" or key == "time_updated":
@@ -215,9 +215,9 @@ class Trainer:
         gpu_usage = using_gpu_mem / total_gpu_mem
         if gpu_usage > self.max_gpu_usage.value:
             self.max_gpu_usage.value = gpu_usage
-        
+
     def evaluate_objective_function(self, cconn):
-        while True:   
+        while True:
             # Receive candidate
             try:
                 candidate = cconn.recv()
@@ -225,7 +225,7 @@ class Trainer:
             except Exception as e:
                 print(e)
             # with redirect_print():
-            
+
             # Train on candiate
             start = datetime.now()
             try:
@@ -247,14 +247,14 @@ class Trainer:
                 else:
                     raise e
             elapsed = datetime.now() - start
-                
+
             observation["time_started"] = start.strftime("%m/%d/%Y-%H:%M:%S")
             observation["time_elapsed"] = round(elapsed.seconds/3600, 2) # In hours, rounded to 2nd decimal
-            
+
             # Add candidate into observation then send back to parent process
             observation.update({"candidate": candidate})
             cconn.send(json.dumps(observation) + "\n")
-            
+
     def evaluate_objective_function(self, cconn):
         # Child logger will report to the main logger
         child_logger = logging.getLogger('child')
@@ -263,11 +263,11 @@ class Trainer:
         child_logger.addHandler(conn_handler)
         child_logger.setLevel(logging.DEBUG)
         try:
-            while True:   
+            while True:
                 # Receive candidate
                 candidate = cconn.recv()
                 candidate = json.loads(candidate)
-                
+
                 # Train on candiate
                 start = datetime.now()
                 try:
@@ -298,4 +298,3 @@ class Trainer:
                 cconn.send(json.dumps(observation) + "\n")
         except:
             child_logger.exception("Error in observing objective function")
-

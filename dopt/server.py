@@ -221,7 +221,20 @@ class Server:
             if "stack_info" in response:
                 # Log
                 logger = logging.getLogger(f"{json.dumps(address)}")
-                logger.setFormatter(logging.Formatter('[%(name)s - %(asctime)s - %(levelname)s] %(message)s'))
+                logger.setLevel(logging.DEBUG)
+                # create file handler that logs debug and higher level messages
+                fh = logging.FileHandler('test2.log')
+                fh.setLevel(logging.DEBUG)
+                # create console handler with a higher log level
+                ch = logging.StreamHandler()
+                ch.setLevel(logging.ERROR)
+                # create formatter and add it to the handlers
+                formatter = logging.Formatter('[%(name)s - %(asctime)s - %(levelname)s] %(message)s')
+                ch.setFormatter(formatter)
+                fh.setFormatter(formatter)
+                # add the handlers to logger
+                logger.addHandler(ch)
+                logger.addHandler(fh)
                 stringReceived = logger.makeLogRecord(response)
                 print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
