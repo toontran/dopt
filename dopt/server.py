@@ -234,7 +234,7 @@ class Server:
         logger.setLevel(logging.DEBUG)
         # create file handler that logs debug and higher level messages
         filename = "logs_" + self.optimizer.filename.split(".")[0] + \
-                  f"_{"server" if address else "client"}.txt"
+                  f"_{'server' if address else 'client'}.txt"
         fh = logging.FileHandler(filename)
         fh.setLevel(logging.DEBUG)
         # create console handler with a higher log level
