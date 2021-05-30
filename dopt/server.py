@@ -223,7 +223,7 @@ class Server:
                 # TODO: Save to file & Delete current logging & Test
                 # TODO: Git cleaning & Test
                 # TODO: Start main optimimzation-
-                logger = logging.getLogger(f"{json.dumps(address)}")
+                logger = logging.getLogger("")
                 logger.setLevel(logging.DEBUG)
                 # create file handler that logs debug and higher level messages
                 fh = logging.FileHandler('test2.log')
@@ -232,7 +232,7 @@ class Server:
                 ch = logging.StreamHandler()
                 ch.setLevel(logging.DEBUG)
                 # create formatter and add it to the handlers
-                formatter = logging.Formatter(f'[%(name)s - %(asctime)s - %(levelname)s] %(message)s')
+                formatter = logging.Formatter(f'[{json.dumps(address)} - %(asctime)s - %(levelname)s] %(message)s')
                 ch.setFormatter(formatter)
                 fh.setFormatter(formatter)
                 # add the handlers to logger
