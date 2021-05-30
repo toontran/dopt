@@ -219,7 +219,10 @@ class Server:
                 with self.lock_trainers:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
             if "stack_info" in response:
-                # Log
+                # Log 
+                # TODO: Save to file & Delete current logging & Test
+                # TODO: Git cleaning & Test
+                # TODO: Start main optimimzation-
                 logger = logging.getLogger(f"{json.dumps(address)}")
                 logger.setLevel(logging.DEBUG)
                 # create file handler that logs debug and higher level messages
@@ -227,15 +230,16 @@ class Server:
                 fh.setLevel(logging.DEBUG)
                 # create console handler with a higher log level
                 ch = logging.StreamHandler()
-                ch.setLevel(logging.ERROR)
+                ch.setLevel(logging.DEBUG)
                 # create formatter and add it to the handlers
-                formatter = logging.Formatter('[%(name)s - %(asctime)s - %(levelname)s] %(message)s')
+                formatter = logging.Formatter(f'[%(name)s - %(asctime)s - %(levelname)s] %(message)s')
                 ch.setFormatter(formatter)
                 fh.setFormatter(formatter)
                 # add the handlers to logger
                 logger.addHandler(ch)
                 logger.addHandler(fh)
-                stringReceived = logger.makeLogRecord(response)
-                print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
+                stringReceived = logging.makeLogRecord(response)
+                logger.handle(stringReceived)
+#                 print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
         
