@@ -33,7 +33,8 @@ class Server:
 #         self.initial_candidates = initial_candidates \
 #                         if isinstance(initial_candidates, list) else []
         self.verbose = verbose
-        self.log_file_name = "logs_" + self.optimizer.file_name.split(".")[0] + ".txt"
+        self.server_logger = self.init_log()
+        
         # Locks for multiprocess or multithreaded access to resource
         self.lock_trainers = Lock()
         self.lock_trainer_queue = Lock()
@@ -107,7 +108,7 @@ class Server:
             connection.sendall(str.encode(
                 json.dumps({"candidate": candidate}) + "\n"
             ))
-            with open(self.log_file_name, "a") as f:
+            with open(self.log_server_filename, "a") as f:
                 f.write(f"[server]: {json.dumps({'candidate_sent':candidate, 'address':address})}\n")
         except Exception as e:
             print("Problem with address:", address)
@@ -194,7 +195,7 @@ class Server:
         :return: A reply to the Trainer
         """
         responses = responses.decode("utf8")
-            
+        logger = init_log(address=address)
         
         for response in responses.split("\n")[:-1]:  
             if self.verbose:
@@ -205,16 +206,16 @@ class Server:
                     self.optimizer_conn.send(json.dumps(response["observation"])+'\n')
                 with self.lock_trainer_queue:
                     self.trainer_queue.put(trainer_id)
-                with open(self.log_file_name, "a") as f:
+                with open(self.log_server_filename, "a") as f:
                     f.write(f"[{json.dumps(address)}]:{json.dumps(response['observation'])}\n")
             if "logging" in response:
                 if self.verbose:
                     print(f'[{address}]:{response["logging"]}') # For now
                 else:
-                    with open(self.log_file_name, "a") as f:
+                    with open(self.log_server_filename, "a") as f:
                         f.write(f"[{json.dumps(address)}]:{json.dumps(response['logging'])}\n")
             if "gpu_info" in response:
-                with open(self.log_file_name, "a") as f:
+                with open(self.log_server_filename, "a") as f:
                     f.write(f"[{json.dumps(address)}]:{json.dumps(response['gpu_info'])}\n")
                 with self.lock_trainers:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
@@ -223,23 +224,28 @@ class Server:
                 # TODO: Save to file & Delete current logging & Test
                 # TODO: Git cleaning & Test
                 # TODO: Start main optimimzation-
-                logger = logging.getLogger("")
-                logger.setLevel(logging.DEBUG)
-                # create file handler that logs debug and higher level messages
-                fh = logging.FileHandler('test2.log')
-                fh.setLevel(logging.DEBUG)
-                # create console handler with a higher log level
-                ch = logging.StreamHandler()
-                ch.setLevel(logging.DEBUG)
-                # create formatter and add it to the handlers
-                formatter = logging.Formatter(f'[{json.dumps(address)} - %(asctime)s - %(levelname)s] %(message)s')
-                ch.setFormatter(formatter)
-                fh.setFormatter(formatter)
-                # add the handlers to logger
-                logger.addHandler(ch)
-                logger.addHandler(fh)
                 stringReceived = logging.makeLogRecord(response)
                 logger.handle(stringReceived)
 #                 print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
         
+    def init_log(self, address=None):
+        logger = logging.getLogger("")
+        logger.setLevel(logging.DEBUG)
+        # create file handler that logs debug and higher level messages
+        filename = "logs_" + self.optimizer.filename.split(".")[0] + \
+                  f"_{"server" if address else "client"}.txt"
+        fh = logging.FileHandler(filename)
+        fh.setLevel(logging.DEBUG)
+        # create console handler with a higher log level
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        # create formatter and add it to the handlers
+        name = {json.dumps(address)} if address else "server"
+        formatter = logging.Formatter(f'[{name} - %(asctime)s - %(levelname)s] %(message)s')
+        ch.setFormatter(formatter)
+        fh.setFormatter(formatter)
+        # add the handlers to logger
+        logger.addHandler(ch)
+        logger.addHandler(fh)
+        return logger
