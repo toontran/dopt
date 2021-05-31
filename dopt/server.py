@@ -112,7 +112,7 @@ class Server:
                 json.dumps({"candidate": candidate}) + "\n"
             ))
             with self.lock_server_logger:
-                self.server_{'candidate_sent':candidate, 'address':address})}\n")
+                self.server_logger.debug(json.dumps({'candidate_sent':candidate, 'address':address}))
         except Exception as e:
             with self.lock_server_logger:
                 self.server_logger.exception(f"Problem with address: {address}")
