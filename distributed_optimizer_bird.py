@@ -56,7 +56,7 @@ CONFIG["commands"] = {
 CONFIG["server"] = {
     "host": "jvs008-r1.bucknell.edu",
     "port": 15555,
-    "verbose": False
+    "logging_level": logging.ERROR
 }
 CONFIG["trainer"] = {
     "username": "tst008",
@@ -135,7 +135,7 @@ def start_server():
         device=CONFIG["optimizer"]["device"],
         seed=CONFIG["optimizer"]["seed"]
     )
-    server = Server(optimizer, CONFIG, verbose=CONFIG["server"]["verbose"])
+    server = Server(optimizer, CONFIG, logging_level=CONFIG["server"]["logging_level"])
     server.run()
     
 def start_trainers():
