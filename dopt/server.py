@@ -68,9 +68,9 @@ class Server:
         while True:
             with self.lock_server_lock:
                 with self.lock_trainers:
-                    self.server_logger.debug("Number of Trainers running:", len(self.trainers))
+                    self.server_logger.debug(f"Number of Trainers running: {len(self.trainers)}")
                 with self.lock_trainer_queue:
-                    self.server_logger.debug("Number of Trainers in the Queue:", self.trainer_queue.qsize())
+                    self.server_logger.debug(f"Number of Trainers in the Queue: {self.trainer_queue.qsize()}")
             if not self.trainer_queue.empty():
                 with self.lock_server_lock:
                     self.server_logger.debug("A Trainer is ready")
@@ -115,7 +115,7 @@ class Server:
                 f.write(f"[server]: {json.dumps({'candidate_sent':candidate, 'address':address})}\n")
         except Exception as e:
             with self.lock_server_lock:
-                self.server_logger.exception("Problem with address:", address)
+                self.server_logger.exception(f"Problem with address: {address}")
     
     def startup_trainers(self):
         """Runs on another Process. SSH into each machine in the list,
@@ -141,7 +141,7 @@ class Server:
             server.bind((host, port))
         except socket.error as e:
             with self.lock_server_lock:
-                self.server_logger.debug(str(e))
+                self.server_logger.exception("Connection Error")
 
         with self.lock_server_lock:
             self.server_logger.debug('Waiting for a Connection..')
@@ -180,7 +180,7 @@ class Server:
                 connection.sendall(str.encode(reply+'\n'))
             except Exception as e:
                 with self.lock_server_lock:
-                    self.server_logger.exception("Can't send reply,", e)
+                    self.server_logger.exception("Can't send reply")
                 break
             # Delay response
             time.sleep(0.5) 
@@ -208,7 +208,7 @@ class Server:
         
         for response in responses.split("\n")[:-1]:  
             with self.lock_server_lock:
-                self.server_logger.debug("Loading response: ", response)
+                self.server_logger.debug(f"Loading response: {response}")
             response = json.loads(response)
             if "observation" in response:
                 with self.lock_optimizer_conn:
