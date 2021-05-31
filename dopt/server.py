@@ -230,7 +230,6 @@ class Server:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
             if "stack_info" in response:
                 # Log 
-                # TODO: Save to file & Delete current logging & Test
                 # TODO: Git cleaning & Test
                 # TODO: Start main optimimzation-
                 stringReceived = logging.makeLogRecord(response)
@@ -242,7 +241,7 @@ class Server:
         logger.setLevel(logging.DEBUG)
         # create file handler that logs debug and higher level messages
         filename = "logs_" + self.optimizer.filename.split(".")[0] + \
-                  f"_{'server' if address else 'client'}.txt"
+                  f"_{'client' if address else 'server'}.txt"
         fh = logging.FileHandler(filename)
         fh.setLevel(logging.DEBUG)
         # create console handler with a higher log level
