@@ -39,6 +39,7 @@ class Server:
         self.lock_trainers = Lock()
         self.lock_trainer_queue = Lock()
         self.lock_optimizer_conn = Lock()
+        self.lock_server_lock = Lock()
         
     def run(self):
         """Starts 3 main Processes: One for the Optimizer, one for
@@ -65,13 +66,14 @@ class Server:
             p.start()
         
         while True:
-            if self.verbose:
+            with self.lock_server_lock:
                 with self.lock_trainers:
-                    print("Number of Trainers running:", len(self.trainers))
+                    self.server_logger.debug("Number of Trainers running:", len(self.trainers))
                 with self.lock_trainer_queue:
-                    print("Number of Trainers in the Queue:", self.trainer_queue.qsize())
+                    self.server_logger.debug("Number of Trainers in the Queue:", self.trainer_queue.qsize())
             if not self.trainer_queue.empty():
-                print("A Trainer is ready")
+                with self.lock_server_lock:
+                    self.server_logger.debug("A Trainer is ready")
                 
 #                 if len(self.initial_candidates) > 0:
 #                     candidate = self.initial_candidates.pop()
@@ -85,7 +87,8 @@ class Server:
                 self._send_candidate_to_trainer(candidate)            
 
             if not optimizer_process.is_alive():
-                print("Optimizer stopped. Killing all processes.")
+                with self.lock_server_lock:
+                    self.server_logger.debug("Optimizer stopped. Killing all processes.")
                 break
                 
             time.sleep(1)
@@ -111,8 +114,8 @@ class Server:
             with open(self.log_server_filename, "a") as f:
                 f.write(f"[server]: {json.dumps({'candidate_sent':candidate, 'address':address})}\n")
         except Exception as e:
-            print("Problem with address:", address)
-            print(e)
+            with self.lock_server_lock:
+                self.server_logger.exception("Problem with address:", address)
     
     def startup_trainers(self):
         """Runs on another Process. SSH into each machine in the list,
@@ -124,7 +127,8 @@ class Server:
                     "host": host, 
                     "command": self.config["commands"][host_cat]
                 })
-        print("Starting trainers..")
+        with self.lock_server_lock:
+            self.server_logger.debug("Starting trainers..")
         process_commands_in_parallel(commands)
         
     def listen_trainers(self):
@@ -136,13 +140,16 @@ class Server:
         try:
             server.bind((host, port))
         except socket.error as e:
-            print(str(e))
+            with self.lock_server_lock:
+                self.server_logger.debug(str(e))
 
-        print('Waiting for a Connection..')
+        with self.lock_server_lock:
+            self.server_logger.debug('Waiting for a Connection..')
         server.listen(5)
         while True:
             client, address = server.accept()
-            print('Connected to: ' + address[0] + ':' + str(address[1]))
+            with self.lock_server_lock:
+                self.server_logger.debug('Connected to: ' + address[0] + ':' + str(address[1]))
             start_new_thread(self.threaded_client_handling, (client, address,))
         
     def threaded_client_handling(self, connection, address):
@@ -157,7 +164,8 @@ class Server:
             try:
                 responses = connection.recv(10000)
             except Exception as e:
-                print("Can't receive response,", e)
+                with self.lock_server_lock:
+                    self.server_logger.exception("Can't receive response")
                 break
                 
             # If trainer exits
@@ -171,7 +179,8 @@ class Server:
             try:
                 connection.sendall(str.encode(reply+'\n'))
             except Exception as e:
-                print("Can't send reply,", e)
+                with self.lock_server_lock:
+                    self.server_logger.exception("Can't send reply,", e)
                 break
             # Delay response
             time.sleep(0.5) 
@@ -195,11 +204,11 @@ class Server:
         :return: A reply to the Trainer
         """
         responses = responses.decode("utf8")
-        logger = init_log(address=address)
+        logger = self.init_log(address=address)
         
         for response in responses.split("\n")[:-1]:  
-            if self.verbose:
-                print("Loading response: ", response)
+            with self.lock_server_lock:
+                self.server_logger.debug("Loading response: ", response)
             response = json.loads(response)
             if "observation" in response:
                 with self.lock_optimizer_conn:
@@ -209,8 +218,8 @@ class Server:
                 with open(self.log_server_filename, "a") as f:
                     f.write(f"[{json.dumps(address)}]:{json.dumps(response['observation'])}\n")
             if "logging" in response:
-                if self.verbose:
-                    print(f'[{address}]:{response["logging"]}') # For now
+                with self.lock_server_lock:
+                    self.server_logger.debug(f'[{address}]:{response["logging"]}') # For now
                 else:
                     with open(self.log_server_filename, "a") as f:
                         f.write(f"[{json.dumps(address)}]:{json.dumps(response['logging'])}\n")
@@ -226,7 +235,6 @@ class Server:
                 # TODO: Start main optimimzation-
                 stringReceived = logging.makeLogRecord(response)
                 logger.handle(stringReceived)
-#                 print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
         
     def init_log(self, address=None):
