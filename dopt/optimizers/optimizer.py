@@ -25,17 +25,17 @@ class Optimizer(ABC):
     MAX_OBSERVATIONS = 500
 
     def __init__(self, 
-                 file_name: str,
+                 filename: str,
                  bounds: Dict[str, Tuple[float, float]],
                  seed: Optional[int] = random.randint(1, 100000)) -> None:
         r""" Constructor for Optimizer base class.
         
-        :param file_name:   Name of the file
+        :param filename:   Name of the file
                             that stores observations
         :param bounds:      Boundaries to the search space
         :param seed:        To ensure reproducibility
         """
-        self.file_name = file_name
+        self.filename = filename
         self.bounds = dict(sorted(bounds.items()))
         
         # Ensure reproducibility
@@ -74,19 +74,19 @@ class Optimizer(ABC):
     def _load_observations(self):
         r"""Load observations from existing file. If file doesn't
         exist, create a new file"""
-        if path.exists(self.file_name):
+        if path.exists(self.filename):
             # Load observations
-            with open(self.file_name, "r") as f:
+            with open(self.filename, "r") as f:
                 for line in f.readlines():
                     self.observations.append(json.loads(line))
         else:
             # Create a new file
-            with open(self.file_name, "w") as f:
+            with open(self.filename, "w") as f:
                 pass
     
     def _save_observation(self, observation):
         r"""Save ONE acquired observation into a storing file"""
-        with open(self.file_name, "a") as f:
+        with open(self.filename, "a") as f:
             f.write(json.dumps(observation, indent=None) + "\n")
             
     def remove_pending_candidate(self, observation):
@@ -132,7 +132,7 @@ class Optimizer(ABC):
             self.pending_candidates.append(candidate)
             
             reply = json.dumps({"candidate": candidate})
-            self.server_conn.send(reply)                
+            self.server_conn.send(reply)                # <---- This
             print("Optimizer sent:", reply)
             print(f"Number of observations: {len(self.observations)}")
             
