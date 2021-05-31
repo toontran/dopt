@@ -39,7 +39,7 @@ class Server:
         self.lock_trainers = Lock()
         self.lock_trainer_queue = Lock()
         self.lock_optimizer_conn = Lock()
-        self.lock_server_lock = Lock()
+        self.lock_server_logger = Lock()
         
     def run(self):
         """Starts 3 main Processes: One for the Optimizer, one for
@@ -66,13 +66,13 @@ class Server:
             p.start()
         
         while True:
-            with self.lock_server_lock:
+            with self.lock_server_logger:
                 with self.lock_trainers:
                     self.server_logger.debug(f"Number of Trainers running: {len(self.trainers)}")
                 with self.lock_trainer_queue:
                     self.server_logger.debug(f"Number of Trainers in the Queue: {self.trainer_queue.qsize()}")
             if not self.trainer_queue.empty():
-                with self.lock_server_lock:
+                with self.lock_server_logger:
                     self.server_logger.debug("A Trainer is ready")
                 
 #                 if len(self.initial_candidates) > 0:
@@ -87,7 +87,7 @@ class Server:
                 self._send_candidate_to_trainer(candidate)            
 
             if not optimizer_process.is_alive():
-                with self.lock_server_lock:
+                with self.lock_server_logger:
                     self.server_logger.debug("Optimizer stopped. Killing all processes.")
                 break
                 
@@ -111,10 +111,10 @@ class Server:
             connection.sendall(str.encode(
                 json.dumps({"candidate": candidate}) + "\n"
             ))
-            with open(self.log_server_filename, "a") as f:
-                f.write(f"[server]: {json.dumps({'candidate_sent':candidate, 'address':address})}\n")
+            with self.lock_server_logger:
+                self.server_{'candidate_sent':candidate, 'address':address})}\n")
         except Exception as e:
-            with self.lock_server_lock:
+            with self.lock_server_logger:
                 self.server_logger.exception(f"Problem with address: {address}")
     
     def startup_trainers(self):
@@ -127,7 +127,7 @@ class Server:
                     "host": host, 
                     "command": self.config["commands"][host_cat]
                 })
-        with self.lock_server_lock:
+        with self.lock_server_logger:
             self.server_logger.debug("Starting trainers..")
         process_commands_in_parallel(commands)
         
@@ -140,15 +140,15 @@ class Server:
         try:
             server.bind((host, port))
         except socket.error as e:
-            with self.lock_server_lock:
+            with self.lock_server_logger:
                 self.server_logger.exception("Connection Error")
 
-        with self.lock_server_lock:
+        with self.lock_server_logger:
             self.server_logger.debug('Waiting for a Connection..')
         server.listen(5)
         while True:
             client, address = server.accept()
-            with self.lock_server_lock:
+            with self.lock_server_logger:
                 self.server_logger.debug('Connected to: ' + address[0] + ':' + str(address[1]))
             start_new_thread(self.threaded_client_handling, (client, address,))
         
@@ -164,7 +164,7 @@ class Server:
             try:
                 responses = connection.recv(10000)
             except Exception as e:
-                with self.lock_server_lock:
+                with self.lock_server_logger:
                     self.server_logger.exception("Can't receive response")
                 break
                 
@@ -179,7 +179,7 @@ class Server:
             try:
                 connection.sendall(str.encode(reply+'\n'))
             except Exception as e:
-                with self.lock_server_lock:
+                with self.lock_server_logger:
                     self.server_logger.exception("Can't send reply")
                 break
             # Delay response
@@ -207,7 +207,7 @@ class Server:
         logger = self.init_log(address=address)
         
         for response in responses.split("\n")[:-1]:  
-            with self.lock_server_lock:
+            with self.lock_server_logger:
                 self.server_logger.debug(f"Loading response: {response}")
             response = json.loads(response)
             if "observation" in response:
@@ -215,17 +215,17 @@ class Server:
                     self.optimizer_conn.send(json.dumps(response["observation"])+'\n')
                 with self.lock_trainer_queue:
                     self.trainer_queue.put(trainer_id)
-                with open(self.log_server_filename, "a") as f:
-                    f.write(f"[{json.dumps(address)}]:{json.dumps(response['observation'])}\n")
+                with self.lock_server_logger:
+                    self.server_logger.debug(json.dumps(response['observation']))
 #             if "logging" in response:
-#                 with self.lock_server_lock:
+#                 with self.lock_server_logger:
 #                     self.server_logger.debug(f'[{address}]:{response["logging"]}') # For now
 #                 else:
 #                     with open(self.log_server_filename, "a") as f:
 #                         f.write(f"[{json.dumps(address)}]:{json.dumps(response['logging'])}\n")
             if "gpu_info" in response:
-                with open(self.log_server_filename, "a") as f:
-                    f.write(f"[{json.dumps(address)}]:{json.dumps(response['gpu_info'])}\n")
+                with self.lock_server_logger:
+                    self.server_logger.debug(json.dumps(response['gpu_info']))
                 with self.lock_trainers:
                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
             if "stack_info" in response:
@@ -237,7 +237,7 @@ class Server:
                 logger.handle(stringReceived)
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
         
-    def init_log(self, address=None):
+    def init_log(self, address=None, stdout_level=logging.DEBUG):
         logger = logging.getLogger("")
         logger.setLevel(logging.DEBUG)
         # create file handler that logs debug and higher level messages
@@ -247,7 +247,7 @@ class Server:
         fh.setLevel(logging.DEBUG)
         # create console handler with a higher log level
         ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
+        ch.setLevel(stdout_level)
         # create formatter and add it to the handlers
         name = {json.dumps(address)} if address else "server"
         formatter = logging.Formatter(f'[{name} - %(asctime)s - %(levelname)s] %(message)s')
