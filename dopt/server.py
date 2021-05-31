@@ -21,7 +21,7 @@ class Server:
                  optimizer: Optimizer,
                  config: Dict,
 #                  initial_candidates: Union[None, List[Dict]] = None,
-                 verbose: bool = True
+                 logging_level = logging.ERROR
         ) -> None:
         """Need docs on the config"""
         self.optimizer = optimizer
@@ -32,8 +32,7 @@ class Server:
         self.trainer_queue = Queue()
 #         self.initial_candidates = initial_candidates \
 #                         if isinstance(initial_candidates, list) else []
-        self.verbose = verbose
-        self.server_logger = self.init_log()
+        self.server_logger = self.init_log(stdout_level=logging_level)
         
         # Locks for multiprocess or multithreaded access to resource
         self.lock_trainers = Lock()
