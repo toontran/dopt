@@ -32,7 +32,8 @@ class Server:
         self.trainer_queue = Queue()
 #         self.initial_candidates = initial_candidates \
 #                         if isinstance(initial_candidates, list) else []
-        self.server_logger = self.init_log(stdout_level=logging_level)
+        self.logging_level = logging_level
+        self.server_logger = self.init_log(stdout_level=self.logging_level)
         
         # Locks for multiprocess or multithreaded access to resource
         self.lock_trainers = Lock()
@@ -203,7 +204,7 @@ class Server:
         :return: A reply to the Trainer
         """
         responses = responses.decode("utf8")
-        logger = self.init_log(address=address)
+        logger = self.init_log(address=address, stdout_level=self.logging_level)
         
         for response in responses.split("\n")[:-1]:  
             with self.lock_server_logger:
