@@ -65,7 +65,7 @@ class ModifiedSocketHandler(logging.handlers.SocketHandler):
 class Trainer:
 
     def __init__(self,
-                 objective_function: Callable[[Dict], Tuple, logging.Logger],
+                 objective_function: Callable[[Dict, logging.Logger], Tuple],
                  username: str,
                  host: str,
                  port: Union[int, str],
