@@ -65,7 +65,7 @@ class ModifiedSocketHandler(logging.handlers.SocketHandler):
 class Trainer:
 
     def __init__(self,
-                 objective_function: Callable[[Dict], Tuple],
+                 objective_function: Callable[[Dict], Tuple, logging.Logger],
                  username: str,
                  host: str,
                  port: Union[int, str],
@@ -287,7 +287,7 @@ class Trainer:
                             "constraints": [1.1] + [0] * self.num_constraints
                         }
                     else:
-                        logger.exception("Error in observing objective function")
+                        child_logger.exception("Error in observing objective function")
                 elapsed = datetime.now() - start
 
                 observation["time_started"] = start.strftime("%m/%d/%Y-%H:%M:%S")
