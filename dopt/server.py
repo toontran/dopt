@@ -226,14 +226,17 @@ class Server:
             if "gpu_info" in response:
                 with self.lock_server_logger:
                     self.server_logger.debug(json.dumps(response['gpu_info']))
-                with self.lock_trainers:
-                    self.trainers[trainer_id][2] = response["gpu_info"] # For now
+#                 with self.lock_trainers:
+#                     self.trainers[trainer_id][2] = response["gpu_info"] # For now
             if "stack_info" in response:
                 # Log 
-                # TODO: Git cleaning & Test
-                # TODO: Start main optimimzation-
                 stringReceived = logging.makeLogRecord(response)
                 logger.handle(stringReceived)
+                
+        handlers = logger.handlers[:]
+        for handler in handlers:
+            handler.close()
+            logger.removeHandler(handler)
         return json.dumps({"message": "candidate_sent"}) # Just an empty message 
         
     def init_log(self, address=None, stdout_level=logging.DEBUG):
@@ -248,7 +251,7 @@ class Server:
         ch = logging.StreamHandler()
         ch.setLevel(stdout_level)
         # create formatter and add it to the handlers
-        name = {json.dumps(address)} if address else "server"
+        name = json.dumps(address) if address else "server"
         formatter = logging.Formatter(f'[{name} - %(asctime)s - %(levelname)s] %(message)s')
         ch.setFormatter(formatter)
         fh.setFormatter(formatter)

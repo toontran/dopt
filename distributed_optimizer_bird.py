@@ -29,11 +29,12 @@ CONFIG["computer_list"] = {
         'tst008@acet116-lnx-13.bucknell.edu',
         'tst008@acet116-lnx-14.bucknell.edu',
         'tst008@acet116-lnx-15.bucknell.edu',
-#         'tst008@acet116-lnx-16.bucknell.edu',
-#         'tst008@acet116-lnx-17.bucknell.edu',
-#         'tst008@acet116-lnx-18.bucknell.edu',
+        'tst008@acet116-lnx-16.bucknell.edu',
+        'tst008@acet116-lnx-17.bucknell.edu',
+        'tst008@acet116-lnx-18.bucknell.edu',
+        'tst008@acet116-lnx-19.bucknell.edu',
 #         'tst008@acet116-lnx-1.bucknell.edu',
-#         'tst008@acet116-lnx-20.bucknell.edu',
+        'tst008@acet116-lnx-20.bucknell.edu',
 #         'tst008@acet116-lnx-21.bucknell.edu',
     ],
 #     "tung-torch": ['tung@jvs008-r1.bucknell.edu']
@@ -74,7 +75,7 @@ CONFIG["optimizer"] = {
     ],
     "device": "cpu",
     "seed": 0,
-    "filename": "test.dopt"
+    "filename": "test2.dopt"
 }
 
 
