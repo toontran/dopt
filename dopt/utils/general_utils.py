@@ -74,7 +74,10 @@ def get_general_info(pid):
 def get_all_gpu_processes_info():
     processes = {}
     out_dict = get_gpu_info()
-    max_gpu = int(out_dict["Total"][0].split()[0])
+    if "Total" in out_dict:    
+        max_gpu = int(out_dict["Total"][0].split()[0])
+    else:
+        max_gpu = -1
     
     processes["max_gpu"] = max_gpu
     processes["time_updated"] = datetime.now().strftime("%m/%d/%Y-%H:%M:%S")
