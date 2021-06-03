@@ -97,7 +97,7 @@ class Optimizer(ABC):
         :param observation: A single observation
         """
         candidate_to_remove = observation["candidate"]
-        if candidate not in self.pending_candidates:
+        if candidate_to_remove not in self.pending_candidates:
             raise Exception("Candidate not found in pending candidates!")
         self.pending_candidates = [candidate 
                                    for candidate in self.pending_candidates
