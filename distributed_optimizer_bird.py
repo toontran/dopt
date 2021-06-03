@@ -122,8 +122,8 @@ def objective_function(candidate, logger):
     mean, variance = Y.item(), Yvar.item()
     
     time.sleep(random.randint(60, 90))
-#     if random.randint(0,1) == 1:   # Simulate error
-#         raise
+    if random.randint(0,1) == 1:   # Simulate error
+        raise
     observation = {
         "objective": [mean, variance],
         "constraints": [feasibility]
