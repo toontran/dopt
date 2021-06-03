@@ -85,7 +85,7 @@ class Server:
                     message = json.loads(message)
                     candidate = message["candidate"]
                     connection, address, pending_candidate, is_active = self._dequeue_trainer()                    
-                    self._send_candidate_to_trainer(candidate, trainer_id)        
+                    self._send_candidate_to_trainer(candidate, trainer_id, connection, address)        
             else:
                 # Trainer Queue is empty, then check for corrupted Trainer
                 with self.lock_trainers:
@@ -132,7 +132,7 @@ class Server:
                 self.__dequeue_trainer()
         return connection, address, pending_candidate, is_active
             
-    def _send_candidate_to_trainer(self, candidate, trainer_id):
+    def _send_candidate_to_trainer(self, candidate, trainer_id, connection, address):
         """Send a candidate safely to a Trainer on the queue"""
         try:
             connection.sendall(str.encode(
