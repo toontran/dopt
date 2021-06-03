@@ -112,11 +112,11 @@ class Optimizer(ABC):
         while self.is_running():
             try:
                 responses = self.server_conn.recv()
-                with lock():
+                with lock:
                     logger.debug(f"Optimizer received: {responses}")
             except EOFError:
                 # When the other end is closed
-                with lock():
+                with lock:
                     logger.debug("Exitting Optimizer")
                 return
             
@@ -129,7 +129,7 @@ class Optimizer(ABC):
                     # Remove pending candidate
                     candidate = json.loads(response[len(Optimizer.HEADER_REMOVE_CANDIDATE):].strip())
                     self.remove_pending_candidate({"candidate": candidate})
-                    with lock():
+                    with lock:
                         logger.debug(f"Removed candidate: {candidate}")
                     continue
                 else:
@@ -146,7 +146,7 @@ class Optimizer(ABC):
 
                 reply = json.dumps({"candidate": candidate})
                 self.server_conn.send(reply)                # <---- This
-                with lock():
+                with lock:
                     logger.debug(f"Optimizer sent: {reply}")
                     logger.debug(f"Number of observations: {len(self.observations)}")
             
