@@ -188,7 +188,7 @@ class Trainer:
 
                 # Interval of communication
                 time.sleep(SERVER_TRAINER_MESSAGE_INTERVAL)
-            p.kill()
+            objective_function_process.kill()
         except:
             self.logger.exception("Error in Trainer.run()")
 
