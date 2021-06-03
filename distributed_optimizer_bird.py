@@ -6,6 +6,7 @@ from multiprocessing import Process
 from typing import Dict, Any, Optional
 import random
 import logging
+import json
 
 import torch
 from torch import nn
@@ -104,7 +105,7 @@ def objective_function_torch_input(X):
     
 # Plug in the objective function here
 def objective_function(candidate, logger):  
-    logger.info(candidate)
+    logger.info(json.dumps(candidate))
     feasibility = get_feasibility(candidate)
     if feasibility > 0:
         logger.info("Infeasible!")
@@ -121,6 +122,8 @@ def objective_function(candidate, logger):
     mean, variance = Y.item(), Yvar.item()
     
     time.sleep(random.randint(60, 90))
+#     if random.randint(0,1) == 1:   # Simulate error
+#         raise
     observation = {
         "objective": [mean, variance],
         "constraints": [feasibility]

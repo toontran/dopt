@@ -47,7 +47,8 @@ class Server:
         
         # Runs the Optimizer
         self.optimizer_conn, cconn = Pipe()
-        optimizer_process = Process(target=self.optimizer.run, args=(cconn,))
+        optimizer_process = Process(target=self.optimizer.run, 
+                                    args=(cconn, self.server_logger, self.lock_server_logger))
         optimizer_process.daemon = True
         self.process_list.append(optimizer_process)
         
@@ -74,17 +75,26 @@ class Server:
             if not self.trainer_queue.empty():
                 with self.lock_server_logger:
                     self.server_logger.debug("A Trainer is ready")
-                
 #                 if len(self.initial_candidates) > 0:
 #                     candidate = self.initial_candidates.pop()
 #                     candidate = dict(sorted(candidate.items())) # Need to sort first
+                # Check which Trainer crashed, then push into a new Queue; if Trainer from 
                 if self.optimizer_conn.poll(None): # There's a candidate available
                     with self.lock_optimizer_conn:
                         message = self.optimizer_conn.recv()
                     message = json.loads(message)
                     candidate = message["candidate"]
-                
-                self._send_candidate_to_trainer(candidate)            
+                    connection, address, pending_candidate, is_active = self._dequeue_trainer()                    
+                    self._send_candidate_to_trainer(candidate, trainer_id)        
+            else:
+                # Trainer Queue is empty, then check for corrupted Trainer
+                with self.lock_trainers:
+                    for trainer_id in self.trainers:
+                        _, _, _, is_active = self.trainers[trainer_id]
+                        if is_active == 0:
+                            # Remove corrupted Trainer & dequeue again
+                            self._remove_pending_candidate(pending_candidate)
+                            self.trainers.pop(trainer_id)
 
             if not optimizer_process.is_alive():
                 with self.lock_server_logger:
@@ -100,13 +110,30 @@ class Server:
         for p in self.process_list:
             p.kill()
             
-    def _send_candidate_to_trainer(self, candidate):
-        """Send a candidate safely to a Trainer on the queue"""
+    def _remove_pending_candidate(self, pending_candidate):
+        """Tells the Optimizer to drop candidate off pending list"""
+        with self.lock_optimizer_conn:
+            self.optimizer_conn.send(Optimizer.HEADER_REMOVE_CANDIDATE + \
+                                     json.dumps(pending_candidate)+'\n')
+            
+    def _dequeue_trainer(self):
+        """Dequeues one trainer from the queue, return trainer info."""
         with self.lock_trainer_queue:
-            trainer_id = self.trainer_queue.get()
-        if trainer_id not in self.trainers:
-            return
-        connection, address, _ = self.trainers[trainer_id]
+            trainer_id = self.trainer_queue.get() # Block until found one
+        with self.lock_trainers:
+            if trainer_id not in self.trainers:
+                return self._dequeue_trainer()
+            connection, address, pending_candidate, is_active = self.trainers[trainer_id]
+        
+            if is_active == 0:
+                # Remove corrupted Trainer & dequeue again
+                self._remove_pending_candidate(pending_candidate)
+                self.trainers.pop(trainer_id)
+                self.__dequeue_trainer()
+        return connection, address, pending_candidate, is_active
+            
+    def _send_candidate_to_trainer(self, candidate, trainer_id):
+        """Send a candidate safely to a Trainer on the queue"""
         try:
             connection.sendall(str.encode(
                 json.dumps({"candidate": candidate}) + "\n"
@@ -157,7 +184,7 @@ class Server:
         with the Trainers to gather real-time info on the Trainers."""
         with self.lock_trainers:
             self.trainer_id += 1
-            self.trainers[self.trainer_id] = [connection, address, None]
+            self.trainers[self.trainer_id] = [connection, address, None, 1] # None for candidate, 1 means active
         trainer_id = self.trainer_id
         while True:
             # Receive message from trainers
@@ -187,7 +214,7 @@ class Server:
                 
         connection.close()
         with self.lock_trainers:
-            self.trainers.pop(trainer_id)
+            self.trainers[trainer_id][3] = 0 # Trainer not active anymore
 
     def _handle_client_response(self, responses, trainer_id, address):
         """Handles the response from the Trainers

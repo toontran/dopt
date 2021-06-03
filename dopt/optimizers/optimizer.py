@@ -23,6 +23,7 @@ class Optimizer(ABC):
     compute the objective function in parallel.
     """
     MAX_OBSERVATIONS = 500
+    HEADER_REMOVE_CANDIDATE = "Remove: "
 
     def __init__(self, 
                  filename: str,
@@ -96,11 +97,13 @@ class Optimizer(ABC):
         :param observation: A single observation
         """
         candidate_to_remove = observation["candidate"]
+        if candidate not in self.pending_candidates:
+            raise Exception("Candidate not found in pending candidates!")
         self.pending_candidates = [candidate 
                                    for candidate in self.pending_candidates
                                    if candidate != candidate_to_remove]
 
-    def run(self, conn) -> None:
+    def run(self, conn, logger, lock) -> None:
         """Optimization loop. 
         Generate candidate to send to Server, then receive further
         candidate(s) from Server, and then generate, and so
@@ -109,32 +112,43 @@ class Optimizer(ABC):
         while self.is_running():
             try:
                 responses = self.server_conn.recv()
-                print("Optimizer received:", responses)
+                with lock():
+                    logger.debug(f"Optimizer received: {responses}")
             except EOFError:
                 # When the other end is closed
-                print("Exitting Optimizer")
+                with lock():
+                    logger.debug("Exitting Optimizer")
                 return
             
-            # Handle the server's response
-            for response in responses.split("\n")[:-1]:                
-                if response.strip() == "{}":
+            # Handle the server's response(s)
+            for response in responses.split("\n")[:-1]:    
+                response = response.strip()
+                if response == "{}":
+                    pass
+                elif Optimizer.HEADER_REMOVE_CANDIDATE in response:
+                    # Remove pending candidate
+                    candidate = json.loads(response[len(Optimizer.HEADER_REMOVE_CANDIDATE):].strip())
+                    self.remove_pending_candidate({"candidate": candidate})
+                    with lock():
+                        logger.debug(f"Removed candidate: {candidate}")
                     continue
-                    
-                observation = json.loads(response)
-                if observation["contention_failure"] == False:
-                    self.observations.append(observation)
-                    self._save_observation(observation) 
-                self.remove_pending_candidate(observation) 
+                else:
+                    observation = json.loads(response)
+                    if observation["contention_failure"] == False:
+                        self.observations.append(observation)
+                        self._save_observation(observation) 
+                    self.remove_pending_candidate(observation) 
                 
-             # Find one potential candidate to try next based on the info
-            candidate: Dict[str, Any] = self.generate_candidate()
-            candidate["id"] = self.generate_id()
-            self.pending_candidates.append(candidate)
-            
-            reply = json.dumps({"candidate": candidate})
-            self.server_conn.send(reply)                # <---- This
-            print("Optimizer sent:", reply)
-            print(f"Number of observations: {len(self.observations)}")
+                 # Find one potential candidate to try next based on the info
+                candidate: Dict[str, Any] = self.generate_candidate()
+                candidate["id"] = self.generate_id()
+                self.pending_candidates.append(candidate)
+
+                reply = json.dumps({"candidate": candidate})
+                self.server_conn.send(reply)                # <---- This
+                with lock():
+                    logger.debug(f"Optimizer sent: {reply}")
+                    logger.debug(f"Number of observations: {len(self.observations)}")
             
     def generate_id(self):
         current_ids = [o["candidate"]["id"] for o in self.observations]
