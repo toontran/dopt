@@ -87,7 +87,7 @@ class Server:
                     connection, address, is_active, pending_candidate, trainer_id = self._dequeue_trainer()                    
                     self._send_candidate_to_trainer(candidate, connection, address)        
                     with self.lock_trainers:
-                        self.trainers[trainer_id] = [*self.trainers[trainer_id], candidate] 
+                        self.trainers[trainer_id] = [*self.trainers[trainer_id][:3], candidate] 
                         with self.lock_server_logger:
                             self.server_logger.debug(f"Trainers running: {json.dumps({trainer_id: self.trainers[trainer_id][2:] for trainer_id in self.trainers})}, assigning {candidate} to {trainer_id}.")
             else:
