@@ -90,9 +90,11 @@ class Server:
                 # Trainer Queue is empty, then check for corrupted Trainer
                 with self.lock_trainers:
                     for trainer_id in self.trainers:
-                        _, _, _, is_active = self.trainers[trainer_id]
+                        _, _, pending_candidate, is_active = self.trainers[trainer_id]
                         if is_active == 0:
                             # Remove corrupted Trainer & dequeue again
+                            with self.lock_server_logger:
+                                self.server_logger.debug(f"Removing candidate: {pending_candidate}")
                             self._remove_pending_candidate(pending_candidate)
                             self.trainers.pop(trainer_id)
 
