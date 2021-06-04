@@ -127,7 +127,7 @@ class Server:
             pending_candidate = None
             if len(self.trainers[trainer_id]) == 3:
                 connection, address, is_active = self.trainers[trainer_id]
-            elif len(self.trainers[trainer_id] == 4):
+            elif len(self.trainers[trainer_id]) == 4:
                 connection, address, is_active, pending_candidate = self.trainers[trainer_id]
             else:
                 raise Exception(f"self.trainers contains wrong things: {self.trainers[trainer_id]}")
