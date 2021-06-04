@@ -224,7 +224,7 @@ class Server:
             self.server_logger.error(f"Closed connection with {address}")
         with self.lock_trainers:
             # Remove corrupted Trainer & dequeue again
-            if len(self.trainers[trainer_id] == 4):
+            if len(self.trainers[trainer_id]) == 4:
                 _, _, _, pending_candidate = self.trainers[trainer_id]
                 self._remove_pending_candidate(pending_candidate)
             self.trainers.pop(trainer_id) 
