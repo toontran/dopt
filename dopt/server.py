@@ -184,7 +184,7 @@ class Server:
         with the Trainers to gather real-time info on the Trainers."""
         with self.lock_trainers:
             self.trainer_id += 1
-            self.trainers[self.trainer_id] = [connection, address, None, 1] # None for candidate, 1 means active
+            self.trainers[self.trainer_id] = [connection, address, {}, 1] # None for candidate, 1 means active
         trainer_id = self.trainer_id
         while True:
             # Receive message from trainers
