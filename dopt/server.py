@@ -84,7 +84,7 @@ class Server:
                         message = self.optimizer_conn.recv()
                     message = json.loads(message)
                     candidate = message["candidate"]
-                    connection, address, pending_candidate, is_active, trainer_id = self._dequeue_trainer()                    
+                    connection, address, is_active, pending_candidate, trainer_id = self._dequeue_trainer()                    
                     self._send_candidate_to_trainer(candidate, connection, address)        
                     with self.lock_trainers:
                         self.trainers[trainer_id] = [*self.trainers[trainer_id], candidate] 
@@ -127,15 +127,17 @@ class Server:
             pending_candidate = None
             if len(self.trainers[trainer_id]) == 3:
                 connection, address, is_active = self.trainers[trainer_id]
+            elif len(self.trainers[trainer_id] == 4):
+                connection, address, is_active, pending_candidate = self.trainers[trainer_id]
             else:
-                connection, address, pending_candidate, is_active = self.trainers[trainer_id]
+                raise Exception(f"self.trainers contains wrong things: {self.trainers[trainer_id]}")
         
             if is_active == 0 and pending_candidate:
                 # Remove corrupted Trainer & dequeue again
                 self._remove_pending_candidate(pending_candidate)
                 self.trainers.pop(trainer_id)
                 self.__dequeue_trainer()
-        return connection, address, pending_candidate, is_active, trainer_id
+        return connection, address, is_active, pending_candidate, trainer_id
             
     def _send_candidate_to_trainer(self, candidate, connection, address):
         """Send a candidate safely to a Trainer on the queue"""
