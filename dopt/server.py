@@ -213,6 +213,8 @@ class Server:
             time.sleep(0.5) 
                 
         connection.close()
+        with self.lock_server_logger:
+            self.server_logger.debug(f"Closed connection with {address}")
         with self.lock_trainers:
             self.trainers[trainer_id][3] = 0 # Trainer not active anymore
 

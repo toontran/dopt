@@ -23,9 +23,9 @@ warnings.filterwarnings("ignore")
 # The configurations
 CONFIG = {}
 CONFIG["computer_list"] = {
-    "acet_update": ['tst008@acet116-lnx-10.bucknell.edu'], # To git pull
+    "acet_update": ['tst008@acet116-lnx-11.bucknell.edu'], # To git pull
     "acet": [
-        'tst008@acet116-lnx-11.bucknell.edu',
+#         'tst008@acet116-lnx-11.bucknell.edu',
         'tst008@acet116-lnx-12.bucknell.edu',
         'tst008@acet116-lnx-13.bucknell.edu',
         'tst008@acet116-lnx-14.bucknell.edu',
