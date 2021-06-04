@@ -233,7 +233,7 @@ class Server:
                     self.server_logger.warning("Is 4!")
             elif len(self.trainers[trainer_id]) == 3:
                 with self.lock_server_logger:
-                    self.server_logger.debug(f"Trainers running: {json.dumps({trainer_id: self.trainers[trainer_id][2:] for trainer_id in self.trainers})}, Current {trainer_id} has {self.trainers[trainer_id]}.")
+                    self.server_logger.debug(f"Trainers running: {json.dumps({trainer_id: self.trainers[trainer_id][2:] for trainer_id in self.trainers.keys()})}, Current {trainer_id} has {self.trainers[trainer_id]}.")
             else:
                 raise Exception(f"self.trainers contains wrong things: {self.trainers[trainer_id]}")
             self.trainers.pop(trainer_id) 
