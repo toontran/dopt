@@ -93,8 +93,6 @@ class Server:
                         _, _, pending_candidate, is_active = self.trainers[trainer_id]
                         if is_active == 0:
                             # Remove corrupted Trainer & dequeue again
-                            with self.lock_server_logger:
-                                self.server_logger.debug(f"Removing candidate: {pending_candidate}")
                             self._remove_pending_candidate(pending_candidate)
                             self.trainers.pop(trainer_id)
 
@@ -114,6 +112,8 @@ class Server:
             
     def _remove_pending_candidate(self, pending_candidate):
         """Tells the Optimizer to drop candidate off pending list"""
+        with self.lock_server_logger:
+                                self.server_logger.error(f"Removing candidate: {pending_candidate}")
         with self.lock_optimizer_conn:
             self.optimizer_conn.send(Optimizer.HEADER_REMOVE_CANDIDATE + \
                                      json.dumps(pending_candidate)+'\n')
