@@ -89,7 +89,7 @@ class Server:
                     with self.lock_trainers:
                         self.trainers[trainer_id][2] = candidate 
                         with self.lock_server_logger:
-                            self.server_logger.debug(f"Trainers running: {json.dumps(self.trainers)}")
+                            self.server_logger.debug(f"Trainers running: {json.dumps(self.trainers.copy())}")
             else:
                 pass
                             
