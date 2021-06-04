@@ -113,7 +113,7 @@ class Server:
     def _remove_pending_candidate(self, pending_candidate):
         """Tells the Optimizer to drop candidate off pending list"""
         with self.lock_server_logger:
-            self.server_logger.error(f"Removing candidate: {pending_candidate}")
+            self.server_logger.info(f"Removing candidate: {pending_candidate}")
         with self.lock_optimizer_conn:
             self.optimizer_conn.send(Optimizer.HEADER_REMOVE_CANDIDATE + \
                                      json.dumps(pending_candidate)+'\n')
@@ -223,15 +223,17 @@ class Server:
                 
         connection.close()
         with self.lock_server_logger:
-            self.server_logger.error(f"Closed connection with {address}")
+            self.server_logger.warning(f"Closed connection with {address}")
         with self.lock_trainers:
             # Remove corrupted Trainer & dequeue again
             if len(self.trainers[trainer_id]) == 4:
                 _, _, _, pending_candidate = self.trainers[trainer_id]
                 self._remove_pending_candidate(pending_candidate)
+                with self.lock_server_logger:
+                    self.server_logger.warning("Is 4!")
             elif len(self.trainers[trainer_id]) == 3:
                 with self.lock_server_logger:
-                    self.server_logger.error("Should be 4!")
+                    self.server_logger.warning("Should be 4!")
             else:
                 raise Exception(f"self.trainers contains wrong things: {self.trainers[trainer_id]}")
             self.trainers.pop(trainer_id) 

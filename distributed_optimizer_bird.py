@@ -59,7 +59,7 @@ CONFIG["commands"] = {
 CONFIG["server"] = {
     "host": "jvs008-r1.bucknell.edu",
     "port": 15555,
-    "logging_level": logging.ERROR
+    "logging_level": logging.WARNING
 }
 CONFIG["trainer"] = {
     "username": "tst008",
