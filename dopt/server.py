@@ -87,7 +87,7 @@ class Server:
                     connection, address, pending_candidate, is_active, trainer_id = self._dequeue_trainer()                    
                     self._send_candidate_to_trainer(candidate, connection, address)        
                     with self.lock_trainers:
-                        self.trainers[trainer_id][2] = candidate 
+                        self.trainers[trainer_id] = [**self.trainers[trainer_id], **candidate] 
                         with self.lock_server_logger:
                             self.server_logger.debug(f"Trainers running: {json.dumps({trainer_id: self.trainers[trainer_id][2:] for trainer_id in self.trainers})}, assigning {candidate} to {trainer_id}.")
             else:
@@ -123,9 +123,14 @@ class Server:
         with self.lock_trainers:
             if trainer_id not in self.trainers:
                 return self._dequeue_trainer()
-            connection, address, pending_candidate, is_active = self.trainers[trainer_id]
+            
+            pending_candidate = None
+            if len(self.trainers[trainer_id]) == 3:
+                connection, address, is_active = self.trainers[trainer_id]
+            else:
+                connection, address, pending_candidate, is_active = self.trainers[trainer_id]
         
-            if is_active == 0:
+            if is_active == 0 and pending_candidate:
                 # Remove corrupted Trainer & dequeue again
                 self._remove_pending_candidate(pending_candidate)
                 self.trainers.pop(trainer_id)
@@ -184,7 +189,7 @@ class Server:
         with the Trainers to gather real-time info on the Trainers."""
         with self.lock_trainers:
             self.trainer_id += 1
-            self.trainers[self.trainer_id] = [connection, address, {}, 1] # None for candidate, 1 means active
+            self.trainers[self.trainer_id] = [connection, address, 1] # 1 means active
         trainer_id = self.trainer_id
         while True:
             # Receive message from trainers
@@ -217,8 +222,9 @@ class Server:
             self.server_logger.error(f"Closed connection with {address}")
         with self.lock_trainers:
             # Remove corrupted Trainer & dequeue again
-            _, _, pending_candidate, _ = self.trainers[trainer_id]
-            self._remove_pending_candidate(pending_candidate)
+            if len(self.trainers[trainer_id] == 4):
+                _, _, _, pending_candidate = self.trainers[trainer_id]
+                self._remove_pending_candidate(pending_candidate)
             self.trainers.pop(trainer_id) 
 #             self.trainers[trainer_id][3] = 0 # Trainer not active anymore
 
