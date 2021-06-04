@@ -181,7 +181,7 @@ class Trainer:
                             # Log
                             formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
                             stringReceived = logging.makeLogRecord(response)
-                            print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
+#                             print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
                         if self.verbose:
                             self.logger.debug( "Server reply " + str(sv_reply))
                         self._send_dict_to_server(sv_conn, sv_reply)
