@@ -228,7 +228,8 @@ class Server:
                 _, _, _, pending_candidate = self.trainers[trainer_id]
                 self._remove_pending_candidate(pending_candidate)
             elif len(self.trainers[trainer_id]) == 3:
-                pass
+                with self.lock_server_logger:
+                    self.server_logger.error("Should be 4!")
             else:
                 raise Exception(f"self.trainers contains wrong things: {self.trainers[trainer_id]}")
             self.trainers.pop(trainer_id) 
