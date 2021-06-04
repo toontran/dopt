@@ -123,7 +123,8 @@ def objective_function(candidate, logger):
     
     time.sleep(random.randint(60, 90))
 #     if random.randint(0,1) == 1:   # Simulate error
-    asdfsdf
+    raise
+#     asdfsdf
     observation = {
         "objective": [mean, variance],
         "constraints": [feasibility]
