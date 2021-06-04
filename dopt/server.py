@@ -84,8 +84,10 @@ class Server:
                         message = self.optimizer_conn.recv()
                     message = json.loads(message)
                     candidate = message["candidate"]
-                    connection, address, pending_candidate, is_active = self._dequeue_trainer()                    
+                    connection, address, pending_candidate, is_active, trainer_id = self._dequeue_trainer()                    
                     self._send_candidate_to_trainer(candidate, connection, address)        
+                    with self.lock_trainers:
+                        self.trainers[trainer_id][2] = candidate 
             else:
                 pass
                             
@@ -126,7 +128,7 @@ class Server:
                 self._remove_pending_candidate(pending_candidate)
                 self.trainers.pop(trainer_id)
                 self.__dequeue_trainer()
-        return connection, address, pending_candidate, is_active
+        return connection, address, pending_candidate, is_active, trainer_id
             
     def _send_candidate_to_trainer(self, candidate, connection, address):
         """Send a candidate safely to a Trainer on the queue"""
