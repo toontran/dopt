@@ -148,7 +148,11 @@ class Optimizer(ABC):
                 self.server_conn.send(reply)                # <---- This
                 with lock:
                     logger.debug(f"Optimizer sent: {reply}")
-                    logger.debug(f"Number of observations: {len(self.observations)}")
+                
+            with lock:
+                logger.debug(f"Number of observations: {len(self.observations)}")
+                logger.debug(f"Number of pending candidates: {len(self.pending_candidates)}")
+          
             
     def generate_id(self):
         current_ids = [o["candidate"]["id"] for o in self.observations]
