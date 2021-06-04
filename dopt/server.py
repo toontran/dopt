@@ -87,14 +87,8 @@ class Server:
                     connection, address, pending_candidate, is_active = self._dequeue_trainer()                    
                     self._send_candidate_to_trainer(candidate, connection, address)        
             else:
-                # Trainer Queue is empty, then check for corrupted Trainer
-                with self.lock_trainers:
-                    for trainer_id in self.trainers:
-                        _, _, pending_candidate, is_active = self.trainers[trainer_id]
-                        if is_active == 0:
-                            # Remove corrupted Trainer & dequeue again
-                            self._remove_pending_candidate(pending_candidate)
-                            self.trainers.pop(trainer_id)
+                pass
+                            
 
             if not optimizer_process.is_alive():
                 with self.lock_server_logger:
@@ -113,7 +107,7 @@ class Server:
     def _remove_pending_candidate(self, pending_candidate):
         """Tells the Optimizer to drop candidate off pending list"""
         with self.lock_server_logger:
-                                self.server_logger.error(f"Removing candidate: {pending_candidate}")
+            self.server_logger.error(f"Removing candidate: {pending_candidate}")
         with self.lock_optimizer_conn:
             self.optimizer_conn.send(Optimizer.HEADER_REMOVE_CANDIDATE + \
                                      json.dumps(pending_candidate)+'\n')
@@ -218,7 +212,10 @@ class Server:
         with self.lock_server_logger:
             self.server_logger.error(f"Closed connection with {address}")
         with self.lock_trainers:
-            self.trainers[trainer_id][3] = 0 # Trainer not active anymore
+            # Remove corrupted Trainer & dequeue again
+            self._remove_pending_candidate(pending_candidate)
+            self.trainers.pop(trainer_id)
+#             self.trainers[trainer_id][3] = 0 # Trainer not active anymore
 
     def _handle_client_response(self, responses, trainer_id, address):
         """Handles the response from the Trainers
