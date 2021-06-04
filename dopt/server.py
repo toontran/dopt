@@ -113,7 +113,7 @@ class Server:
     def _remove_pending_candidate(self, pending_candidate):
         """Tells the Optimizer to drop candidate off pending list"""
         with self.lock_server_logger:
-            self.server_logger.info(f"Removing candidate: {pending_candidate}")
+            self.server_logger.warning(f"Removing candidate: {pending_candidate}")
         with self.lock_optimizer_conn:
             self.optimizer_conn.send(Optimizer.HEADER_REMOVE_CANDIDATE + \
                                      json.dumps(pending_candidate)+'\n')

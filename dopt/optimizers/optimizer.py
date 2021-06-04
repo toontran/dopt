@@ -153,6 +153,7 @@ class Optimizer(ABC):
                 logger.debug(f"Number of observations: {len(self.observations)}")
                 logger.debug(f"Number of pending candidates: {len(self.pending_candidates)}")
                 logger.debug(f"Pending candidates: {json.dumps(self.pending_candidates)}")
+                logger.warning(f"Pending candidates: {json.dumps(self.pending_candidates)}")
           
             
     def generate_id(self):
