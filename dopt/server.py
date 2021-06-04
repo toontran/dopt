@@ -88,6 +88,8 @@ class Server:
                     self._send_candidate_to_trainer(candidate, connection, address)        
                     with self.lock_trainers:
                         self.trainers[trainer_id][2] = candidate 
+                        with self.lock_server_logger:
+                            self.server_logger.debug(f"Trainers running: {json.dumps(self.trainers)}")
             else:
                 pass
                             
