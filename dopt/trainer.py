@@ -42,7 +42,13 @@ class PipeConnectionHandler(logging.Handler):
             d["msg"] = record.getMessage()
             self.conn.send(json.dumps(d) + self.terminator)
         except:
-            self.handleError(record)
+            try:
+                formatter = logging.Formatter(f'%(message)s')
+                formatted_record = formatter.format(logging.makeLogRecord(dict(record.__dict__)))
+                d = {"error": formatted_record}
+                self.conn.send(json.dumps(d) + self.terminator)
+            except:
+                self.handleError(record)
             
 
 
@@ -184,6 +190,8 @@ class Trainer:
                                 sv_reply["observation"]["contention_failure"] = True
                             else:
                                 sv_reply["observation"]["contention_failure"] = False
+                        if "error" in response:
+                            self.logger.error(response["error"])
                         if "stack_info" in response:
                             # Log
                             formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
