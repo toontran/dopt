@@ -269,7 +269,7 @@ class Server:
                     self.server_logger.debug(json.dumps(response['observation']))
             if "error" in response:
                 with self.lock_server_logger:
-                    self.server_logger.debug(f'{response["error"]}') #
+                    self.server_logger.error(f'{response["error"]}') #
             if "gpu_info" in response:
                 with self.lock_server_logger:
                     self.server_logger.debug(json.dumps(response['gpu_info']))

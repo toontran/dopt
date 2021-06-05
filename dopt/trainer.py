@@ -46,6 +46,7 @@ class PipeConnectionHandler(logging.Handler):
                 formatter = logging.Formatter(f'%(message)s')
                 formatted_record = formatter.format(logging.makeLogRecord(record))
                 d = {"error": formatted_record}
+                print(d)
                 self.conn.send(json.dumps(d) + self.terminator)
             except:
                 self.handleError(record)
