@@ -192,6 +192,10 @@ class Server:
         """A thread handling the Trainers. Continually communicate 
         with the Trainers to gather real-time info on the Trainers."""
         with self.lock_trainers:
+            # Quick fix for multiple Trainer instances running on same machine
+            for trainer_id in self.trainers:
+                if address[0] in self.trainers[self.trainer_id]: 
+                    return
             self.trainer_id += 1
             self.trainers[self.trainer_id] = [connection, address, 1] # 1 means active
         trainer_id = self.trainer_id
