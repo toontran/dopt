@@ -41,9 +41,14 @@ class PipeConnectionHandler(logging.Handler):
             d = dict(record.__dict__)
             d["msg"] = record.getMessage()
             self.conn.send(json.dumps(d) + self.terminator)
-        except Exception:
-            print(str(d))
-            self.handleError(record)
+        except:
+            try:
+                formatter = logging.Formatter(f'%(message)s')
+                formatted_record = formatter.format(logging.makeLogRecord(record))
+                d = {"error": formatted_record}
+                self.conn.send(json.dumps(d) + self.terminator)
+            except:
+                self.handleError(record)
             
 
 

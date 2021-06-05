@@ -267,12 +267,9 @@ class Server:
                     self.trainer_queue.put(trainer_id)
                 with self.lock_server_logger:
                     self.server_logger.debug(json.dumps(response['observation']))
-#             if "logging" in response:
-#                 with self.lock_server_logger:
-#                     self.server_logger.debug(f'[{address}]:{response["logging"]}') # For now
-#                 else:
-#                     with open(self.log_server_filename, "a") as f:
-#                         f.write(f"[{json.dumps(address)}]:{json.dumps(response['logging'])}\n")
+            if "error" in response:
+                with self.lock_server_logger:
+                    self.server_logger.debug(f'{response["error"]}') #
             if "gpu_info" in response:
                 with self.lock_server_logger:
                     self.server_logger.debug(json.dumps(response['gpu_info']))
