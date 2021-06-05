@@ -70,7 +70,7 @@ class ModifiedSocketHandler(logging.handlers.SocketHandler):
                 formatter = logging.Formatter(f'%(message)s')
                 formatted_record = formatter.format(logging.makeLogRecord(dict(record.__dict__)))
                 d = {"error": formatted_record}
-                self.conn.send(str.encode(json.dumps(d) + self.terminator, encoding="utf8"))
+                self.send(str.encode(json.dumps(d) + self.terminator, encoding="utf8"))
             except:
                 self.handleError(record)
 
