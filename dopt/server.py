@@ -195,7 +195,7 @@ class Server:
             # Quick fix for multiple Trainer instances running on same machine
             if len(self.trainers) > 0:
                 for trainer_id in list(self.trainers):
-                    if address[0] in self.trainers[self.trainer_id]: 
+                    if address[0] == self.trainers[trainer_id][1]: 
                         return
             self.trainer_id += 1
             self.trainers[self.trainer_id] = [connection, address, 1] # 1 means active
