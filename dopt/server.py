@@ -193,7 +193,7 @@ class Server:
         with the Trainers to gather real-time info on the Trainers."""
         with self.lock_trainers:
             # Quick fix for multiple Trainer instances running on same machine
-            if len(self.trainers > 0):
+            if len(self.trainers) > 0:
                 for trainer_id in list(self.trainers):
                     if address[0] in self.trainers[self.trainer_id]: 
                         return
