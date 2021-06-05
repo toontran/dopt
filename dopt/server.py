@@ -194,7 +194,7 @@ class Server:
         with self.lock_trainers:
             # Quick fix for multiple Trainer instances running on same machine
             if len(self.trainers) > 0:
-                for trainer_id in list(self.trainers):
+                for trainer_id in self.trainers.keys():
                     if address[0] == self.trainers[trainer_id][1]: 
                         return
             self.trainer_id += 1
