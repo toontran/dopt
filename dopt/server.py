@@ -91,7 +91,7 @@ class Server:
                         
                     with self.lock_trainers:
                         with self.lock_server_logger:
-                            self.server_logger.debug(f"Trainers running: {json.dumps({trainer_id: self.trainers[trainer_id][2:] for trainer_id in self.trainers})}, assigning {candidate} to {trainer_id}.")
+                            self.server_logger.debug(f"Trainers running: {json.dumps({trainer_id: self.trainers[trainer_id][2:] for trainer_id in list(self.trainers)})}, assigning {candidate} to {trainer_id}.")
             else:
                 pass
                             
