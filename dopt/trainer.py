@@ -42,14 +42,7 @@ class PipeConnectionHandler(logging.Handler):
             d["msg"] = record.getMessage()
             self.conn.send(json.dumps(d) + self.terminator)
         except:
-            try:
-                formatter = logging.Formatter(f'%(message)s')
-                formatted_record = formatter.format(logging.makeLogRecord(dict(record.__dict__)))
-                d = {"error": formatted_record}
-                print(d)
-                self.conn.send(json.dumps(d) + self.terminator)
-            except:
-                self.handleError(record)
+            self.handleError(record)
             
 
 
@@ -67,7 +60,13 @@ class ModifiedSocketHandler(logging.handlers.SocketHandler):
             d["msg"] = record.getMessage()
             self.send(str.encode(json.dumps(d) + self.terminator, encoding="utf8"))
         except Exception:
-            self.handleError(record)
+            try:
+                formatter = logging.Formatter(f'%(message)s')
+                formatted_record = formatter.format(logging.makeLogRecord(dict(record.__dict__)))
+                d = {"error": formatted_record}
+                self.conn.send(str.encode(json.dumps(d) + self.terminator, encoding="utf8"))
+            except:
+                self.handleError(record)
 
 
 class Trainer:
