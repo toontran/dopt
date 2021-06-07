@@ -41,7 +41,6 @@ def generate_seed():
 
 def get_gpu_info():
     sp = subprocess.Popen(['nvidia-smi', '-q'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
     out_str = sp.communicate()
     out_list = out_str[0].decode("utf8").split('\n')
     out_dict = {}
@@ -59,7 +58,6 @@ def get_gpu_info():
 
 def get_general_info(pid):
     sp = subprocess.Popen(["ps", "-up", str(pid)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
     out_str = sp.communicate()
     outputs = out_str[0].decode("utf8").split("\n")
     labels = outputs[0].split()
@@ -78,7 +76,6 @@ def get_all_gpu_processes_info():
         max_gpu = int(out_dict["Total"][0].split()[0])
     else:
         max_gpu = -1
-    
     processes["max_gpu"] = max_gpu
     processes["time_updated"] = datetime.now().strftime("%m/%d/%Y-%H:%M:%S")
     for i, process_id in enumerate(out_dict["Process ID"]):

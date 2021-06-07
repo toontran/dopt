@@ -12,6 +12,7 @@ from threading import Lock
 import logging
 import logging.handlers
 import pickle
+import traceback
 
 import torch
 
@@ -99,7 +100,7 @@ class Trainer:
             self.port = int(port)
         except Exception as e:
             print("Invalid (host, port)!")
-            print(e)
+            traceback.print_exc()
         self.max_gpu_usage = Value('d', 0.0)
         self.is_running = True
 
@@ -118,6 +119,7 @@ class Trainer:
             sv_conn.connect((self.host, self.port))
         except Exception as e:
             print("Can't connect!", str(e))
+            traceback.print_exc()
             sys.exit(0)
 
         sv_conn.setblocking(False) # Do not wait to recv()
@@ -148,11 +150,9 @@ class Trainer:
                 self._send_dict_to_server(sv_conn, sv_reply)
 
                 self.logger.debug("Handling")
-                print("Handling")
                 try:
                     # Handle response from Server
                     sv_responses = sv_conn.recv(NUM_BYTES_RECEIVE).decode("utf8")
-                    print("Trainer receiving: ", sv_responses)
                     for response in sv_responses.split('\n')[:-1]:
                         response = json.loads(response)
                         if "candidate" in response:
@@ -167,14 +167,12 @@ class Trainer:
 
                 # Check for messages from objective function process
                 self.logger.debug("Checking")
-                print("Checking")
                 if pconn.poll():
                     obj_func_responses = pconn.recv()
                     for response in obj_func_responses.split("\n")[:-1]:
                         try:
                             response = json.loads(response)
                         except ValueError as e:
-                            print(response)
                             continue
                         self.logger.debug("Objective func Response: " + str(response))
 
@@ -199,12 +197,10 @@ class Trainer:
                             formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
                             stringReceived = logging.makeLogRecord(response)
                             self.logger.handle(stringReceived)
-#                             print('socketlistener: converted to log: ', repr(formatter.format(stringReceived)))
                         self._send_dict_to_server(sv_conn, sv_reply)
 
                 # Interval of communication
                 time.sleep(SERVER_TRAINER_MESSAGE_INTERVAL)
-            print("Out of while loop")
             objective_function_process.kill()
         except:
             objective_function_process.kill()
@@ -216,11 +212,8 @@ class Trainer:
             sv_conn.sendall(str.encode(json.dumps(d) + "\n", encoding="utf8"))
         except Exception as e:
             print("Stopping...")
-            print(e)
+            traceback.print_exc()
             self.is_running = False
-
-#     def _send_dict_to_server(self, d):
-#         json.dumps(d)
 
 
     def _update_max_gpu_usage(self, gpu_info):
@@ -234,45 +227,7 @@ class Trainer:
         gpu_usage = using_gpu_mem / total_gpu_mem
         if gpu_usage > self.max_gpu_usage.value:
             self.max_gpu_usage.value = gpu_usage
-
-#     def evaluate_objective_function(self, cconn):
-#         while True:
-#             # Receive candidate
-#             try:
-#                 candidate = cconn.recv()
-#                 candidate = json.loads(candidate)
-#             except Exception as e:
-#                 print(e)
-#             # with redirect_print():
-
-#             # Train on candiate
-#             start = datetime.now()
-#             try:
-#                 print("Evaluating objective function")
-#                 observation = self.objective_function(candidate, logger)
-#                 # Add GPU memory constraints
-#                 with self.lock_max_gpu_usage:
-#                     observation['constraints'] = \
-#                             [self.max_gpu_usage.value - MAXIMUM_ALLOWED_GPU_PERCENTAGE] + \
-#                             observation["constraints"]
-#             except Exception as e:
-#                 if 'out of memory' in str(e):
-#                     torch.cuda.empty_cache()
-#                     mean, variance = 0.001, 0.001
-#                     observation = {
-#                         "objective": [mean, variance],
-#                         "constraints": [1.1] + [0] * self.num_constraints
-#                     }
-#                 else:
-#                     raise e
-#             elapsed = datetime.now() - start
-
-#             observation["time_started"] = start.strftime("%m/%d/%Y-%H:%M:%S")
-#             observation["time_elapsed"] = round(elapsed.seconds/3600, 2) # In hours, rounded to 2nd decimal
-
-#             # Add candidate into observation then send back to parent process
-#             observation.update({"candidate": candidate})
-#             cconn.send(json.dumps(observation) + "\n")
+            
 
     def evaluate_objective_function(self, cconn):
         # Child logger will report to the main logger
@@ -291,7 +246,6 @@ class Trainer:
                 start = datetime.now()
                 try:
                     child_logger.debug("Evaluating objective function")
-                    print("Evaluating OF")
                     observation = self.objective_function(candidate, child_logger)
                     # Add GPU memory constraints
                     with self.lock_max_gpu_usage:
