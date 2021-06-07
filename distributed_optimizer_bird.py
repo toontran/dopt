@@ -24,9 +24,9 @@ warnings.filterwarnings("ignore")
 CONFIG = {}
 CONFIG["computer_list"] = {
     "acet_update": ['tst008@acet116-lnx-11.bucknell.edu'], # To git pull
-    "acet": [
+#     "acet": [
 #         'tst008@acet116-lnx-11.bucknell.edu',
-        'tst008@acet116-lnx-12.bucknell.edu',
+#         'tst008@acet116-lnx-12.bucknell.edu',
 #         'tst008@acet116-lnx-13.bucknell.edu',
 #         'tst008@acet116-lnx-14.bucknell.edu',
 #         'tst008@acet116-lnx-15.bucknell.edu',
@@ -37,7 +37,7 @@ CONFIG["computer_list"] = {
 #         'tst008@acet116-lnx-1.bucknell.edu',
 #         'tst008@acet116-lnx-20.bucknell.edu',
 #         'tst008@acet116-lnx-21.bucknell.edu',
-    ],
+#     ],
 #     "tung-torch": ['tung@jvs008-r1.bucknell.edu']
 }
 # Commands to run on target machines here
