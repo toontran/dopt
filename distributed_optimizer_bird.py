@@ -58,7 +58,7 @@ CONFIG["commands"] = {
 # }
 CONFIG["server"] = {
     "host": "jvs008-r1.bucknell.edu",
-    "port": 15555,
+    "port": 15556,
     "logging_level": logging.WARNING
 }
 CONFIG["trainer"] = {
