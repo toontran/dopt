@@ -24,9 +24,9 @@ warnings.filterwarnings("ignore")
 CONFIG = {}
 CONFIG["computer_list"] = {
     "acet_update": ['tst008@acet116-lnx-11.bucknell.edu'], # To git pull
-#     "acet": [
+    "acet": [
 #         'tst008@acet116-lnx-11.bucknell.edu',
-#         'tst008@acet116-lnx-12.bucknell.edu',
+        'tst008@acet116-lnx-12.bucknell.edu',
 #         'tst008@acet116-lnx-13.bucknell.edu',
 #         'tst008@acet116-lnx-14.bucknell.edu',
 #         'tst008@acet116-lnx-15.bucknell.edu',
@@ -37,7 +37,7 @@ CONFIG["computer_list"] = {
 #         'tst008@acet116-lnx-1.bucknell.edu',
 #         'tst008@acet116-lnx-20.bucknell.edu',
 #         'tst008@acet116-lnx-21.bucknell.edu',
-#     ],
+    ],
 #     "tung-torch": ['tung@jvs008-r1.bucknell.edu']
 }
 # Commands to run on target machines here
@@ -104,7 +104,9 @@ def objective_function_torch_input(X):
     return Y, Yvar.view_as(Y)**2, true_var.view_as(Y)**2
     
 # Plug in the objective function here
-def objective_function(candidate, logger):  
+def objective_function(candidate, logger):
+    time.sleep(random.randint(60, 90))
+    raise Exception("Intended!")
     logger.info(json.dumps(candidate))
     feasibility = get_feasibility(candidate)
     if feasibility > 0:
@@ -120,11 +122,6 @@ def objective_function(candidate, logger):
     X = torch.tensor([candidate["x1"], candidate["x2"]], dtype=float)
     Y, Yvar, _ = objective_function_torch_input(X)
     mean, variance = Y.item(), Yvar.item()
-    
-    time.sleep(random.randint(60, 90))
-#     if random.randint(0,1) == 1:   # Simulate error
-    raise Exception("Intended!")
-#     asdfsdf
     observation = {
         "objective": [mean, variance],
         "constraints": [feasibility]
