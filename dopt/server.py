@@ -30,6 +30,7 @@ class Server:
         self.trainers = Manager().dict()
         self.trainer_id = 0
         self.trainer_queue = Queue()
+        self.bad_candidate_queue = Queue()
 #         self.initial_candidates = initial_candidates \
 #                         if isinstance(initial_candidates, list) else []
         self.logging_level = logging_level
@@ -40,6 +41,7 @@ class Server:
         self.lock_trainer_queue = Lock()
         self.lock_optimizer_conn = Lock()
         self.lock_server_logger = Lock()
+        self.lock_bad_candidate_queue = Lock()
         
     def run(self):
         """Starts 3 main Processes: One for the Optimizer, one for
@@ -75,23 +77,27 @@ class Server:
             if not self.trainer_queue.empty():
                 with self.lock_server_logger:
                     self.server_logger.debug("A Trainer is ready")
-#                 if len(self.initial_candidates) > 0:
-#                     candidate = self.initial_candidates.pop()
-#                     candidate = dict(sorted(candidate.items())) # Need to sort first
+                    
                 # Check which Trainer crashed, then push into a new Queue; if Trainer from 
-                if self.optimizer_conn.poll(None): # There's a candidate available
-                    with self.lock_optimizer_conn:
-                        message = self.optimizer_conn.recv()
-                    message = json.loads(message)
-                    candidate = message["candidate"]
-                    connection, address, is_active, pending_candidate, trainer_id = self._dequeue_trainer()                    
-                    self._send_candidate_to_trainer(candidate, connection, address)        
-                    with self.lock_trainers:
-                        self.trainers[trainer_id] = [*self.trainers[trainer_id][:3], candidate] 
-                        
-                    with self.lock_trainers:
-                        with self.lock_server_logger:
-                            self.server_logger.debug(f"Trainers running: {json.dumps({trainer_id: self.trainers[trainer_id][1:] for trainer_id in list(self.trainers)})}, assigning {candidate} to {trainer_id}.")
+                candidate = None
+                with self.lock_optimizer_conn:
+                    with self.lock_bad_candidate_queue:
+                        if not self.bad_candidate_queue.empty():
+                            candidate = self._dequeue_bad_candidate()
+                        elif self.optimizer_conn.poll(None): # There's a candidate available
+                            message = self.optimizer_conn.recv()
+                            message = json.loads(message)
+                            candidate = message["candidate"]
+                            
+                        if candidate != None:
+                            connection, address, is_active, pending_candidate, trainer_id = self._dequeue_trainer()                    
+                            self._send_candidate_to_trainer(candidate, connection, address)        
+                            with self.lock_trainers:
+                                self.trainers[trainer_id] = [*self.trainers[trainer_id][:3], candidate] 
+
+                            with self.lock_trainers:
+                                with self.lock_server_logger:
+                                    self.server_logger.debug(f"Trainers running: {json.dumps({trainer_id: self.trainers[trainer_id][1:] for trainer_id in list(self.trainers)})}, assigning {candidate} to {trainer_id}.")
             else:
                 pass
                             
@@ -117,6 +123,11 @@ class Server:
         with self.lock_optimizer_conn:
             self.optimizer_conn.send(Optimizer.HEADER_REMOVE_CANDIDATE + \
                                      json.dumps(pending_candidate)+'\n')
+            
+    def _dequeue_bad_candidate(self):
+        with self.lock_bad_candidate_queue:
+            trainer = self.bad_candidate_queue.get() # Block until found one
+        return trainer
             
     def _dequeue_trainer(self):
         """Dequeues one trainer from the queue, return trainer info."""
@@ -229,13 +240,21 @@ class Server:
         connection.close()
         with self.lock_server_logger:
             self.server_logger.warning(f"Closed connection with {address}")
+            
         with self.lock_trainers:
             # Remove corrupted Trainer & dequeue again
             if len(self.trainers[trainer_id]) == 4:
-                _, _, _, pending_candidate = self.trainers[trainer_id]
-                self._remove_pending_candidate(pending_candidate)
-                with self.lock_server_logger:
-                    self.server_logger.warning("Is 4!")
+                _, _, status, pending_candidate = self.trainers[trainer_id]
+                if status == 2:
+                    # Candidate crashes when evaluated (twice in a row)
+                    self._remove_pending_candidate(pending_candidate)
+                    with self.lock_server_logger:
+                        self.server_logger.error("Trainer crashes while evaluating candidate: " + \
+                                                 f"{json.dumps(pending_candidate)}")
+                elif status == 1:
+                    # Trainer crashed: Save candidate to try on a different Trainer
+                    with self.lock_bad_candidate_queue:
+                        self.bad_candidate_queue.put(pending_candidate)
             elif len(self.trainers[trainer_id]) == 3:
                 with self.lock_server_logger:
                     self.server_logger.warning(f"Trainers running: {json.dumps({trainer_id: self.trainers[trainer_id][1:] for trainer_id in self.trainers.keys()})}, Current {trainer_id} has {self.trainers[trainer_id]}.")
@@ -270,6 +289,8 @@ class Server:
                     self.optimizer_conn.send(json.dumps(response["observation"])+'\n')
                 with self.lock_trainer_queue:
                     self.trainer_queue.put(trainer_id)
+                with self.lock_trainers:
+                    self.trainers[trainer_id][2] = 1 
                 with self.lock_server_logger:
                     self.server_logger.debug(json.dumps(response['observation']))
             if "error" in response:
